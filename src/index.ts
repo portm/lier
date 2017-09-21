@@ -1,5 +1,5 @@
 import { compile, deduction, format, formatByAst, parse, stringify } from './grammar'
-import { Options } from './interfaces'
+import { Options, LierError } from './interfaces'
 import mock from './mock'
 import types from './types'
 import validate from './validate'

@@ -1,6 +1,6 @@
 import { Style } from '../tokenizer/interface.d'
 
-interface FormatStyle extends Style {
+export interface FormatStyle extends Style {
     description: string
     mock: string
     wrapup: string

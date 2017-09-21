@@ -5,6 +5,10 @@ module.exports = function (task) {
         return kit.spawn('tsc', ['-w'])
     })
 
+    task('build', function () {
+        return kit.spawn('tsc')
+    })
+
     task('test', function () {
         return kit.spawn('junit', ['test/*.js'])
     })

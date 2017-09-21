@@ -2,7 +2,10 @@
   "files.exclude": {
     "src/**/*.js": true,
     "index.js": true,
+    "index.d.ts": "explorerExcludedFiles",
+    "src/**/*.d.ts": "explorerExcludedFiles",
     "test/**/*.js": "explorerExcludedFiles",
+    "test/**/*.d.ts": "explorerExcludedFiles",
     "node_modules": "explorerExcludedFiles"
   }
 }
