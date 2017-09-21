@@ -1,0 +1,136 @@
+.lier-container {
+    font-size: 14px;
+    font-family: Menlo, monospace;
+    background-color: #fff;
+    line-height: 21px;
+    white-space: pre-wrap;
+}
+
+.lier-container * {
+    vertical-align: top;
+}
+
+.lier-container .lier-range {
+    display: inline-block;
+}
+
+.lier-container .lier-line {
+    padding-left: 36px;
+}
+
+.lier-container .lier-match-test, .lier-container .lier-operator {
+    padding: 0 9px;
+}
+
+.lier-container .lier-comma, .lier-container .lier-colon, .lier-container .lier-case {
+    padding-right: 9px;
+}
+
+.lier-container .lier-key-identifier {
+    color: #b52ead;
+}
+
+.lier-container .lier-key-regex {
+    color: #3dc100;
+}
+
+.lier-container .lier-key-string {
+    color: #b52ead;
+}
+
+.lier-container .lier-key-number {
+    color: #03A9F4;
+}
+
+.lier-container .lier-key-dollar {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.lier-container .lier-identifier {
+    color: #5d73d4;
+}
+
+.lier-container .lier-regex {
+    color: #3dc100;
+}
+
+.lier-container .lier-string {
+    color: #92af0f;
+}
+
+.lier-container .lier-number {
+    color: #de498a;
+}
+
+.lier-container .lier-match {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.lier-container .lier-optional {
+    color: #f00;
+}
+
+.lier-container .lier-enum {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.lier-container .lier-this {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.lier-container .lier-self {
+    color: #ef943e;
+    font-weight: bold;
+}
+
+.lier-container .lier-path {
+    color: #459e8c;
+}
+
+.lier-container .lier-case {
+    color: #bb01ff;
+}
+
+.lier-container .lier-colon, .lier-container .lier-spread {
+    color: #333;
+}
+
+.lier-container .lier-operator {
+    color: #333;
+}
+
+.lier-container .lier-decorate {
+    color: #a26d23;
+}
+
+.lier-container .lier-at {
+    color: #a26d23;
+}
+
+.lier-container .lier-group-start, .lier-container .lier-group-end {
+    color: #333;
+}
+
+.lier-container .lier-array-start, .lier-container .lier-array-end {
+    color: #333;
+}
+
+.lier-container .lier-block-start, .lier-container .lier-block-end {
+    color: #333;
+}
+
+.lier-container .lier-comment {
+    color: #aaa;
+}
+
+.lier-container .lier-mock * {
+    opacity: .5
+}
+
+.lier-container .lier-description {
+    color: #aaa;
+}

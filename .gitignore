@@ -1,0 +1,4 @@
+index.js
+/src/**/*.js
+/test/**/*.js
+node_modules

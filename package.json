@@ -1,0 +1,34 @@
+{
+  "name": "lier",
+  "version": "1.0.0",
+  "description": "a type validator",
+  "main": "index.js",
+  "scripts": {
+    "test": "no test",
+    "postinstall": "typings i"
+  },
+  "files": [
+    "src/**/*.js",
+    "*.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git.com"
+  },
+  "keywords": [
+    "type"
+  ],
+  "author": "ys@ysmood.org",
+  "license": "ISC",
+  "devDependencies": {
+    "junit": "^1.4.6",
+    "nokit": "^0.23.9",
+    "typescript": "^2.5.2",
+    "typings": "^2.1.1"
+  },
+  "dependencies": {
+    "big.js": "^3.2.0",
+    "lodash": "^4.17.4",
+    "randexp": "^0.4.6"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "files.exclude": {
+    "src/**/*.js": true,
+    "index.js": true,
+    "test/**/*.js": "explorerExcludedFiles",
+    "node_modules": "explorerExcludedFiles"
+  }
+}
