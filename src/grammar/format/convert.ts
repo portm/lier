@@ -48,6 +48,8 @@ const TPL_CONTAINER = `<pre class="lier-container">{lines}</pre>`
 
 const TPL_LINE = `<div class="lier-line">{ranges}</div>`
 
+const TPL_BLOCK = `<div class="lier-block">{ranges}</div>`
+
 const TPL_RANGE = `<div class="lier-range lier-{class}">{range}</div>`
 
 const htmlEscapes = {
@@ -64,6 +66,10 @@ const renderRange = (text, type) => {
 
 const renderLine = (text) => {
     return TPL_LINE.replace('{ranges}', text)
+}
+
+const renderBlock = (text) => {
+    return TPL_BLOCK.replace('{ranges}', text)
 }
 
 const renderContainer = (text) => {
@@ -143,8 +149,8 @@ const table: Table = {
                     const propertys = []
                     if (self.property.length) {
                         for (const item of self.property) {
-                            propertys.unshift(table.router(item, context))
-                            propertys.unshift(renderRange(', ', style[',']))
+                            propertys.push(table.router(item, context))
+                            propertys.push(renderRange(', ', style[',']))
                         }
                         propertys.pop()
                     }
@@ -179,6 +185,7 @@ const table: Table = {
     },
     [Type.object]: (node, context) => {
         const tags = []
+        const inner = []
         tags.push(renderRange('{', style.blockStart))
         for (const property of node.properties) {
             context.inkey = true
@@ -224,7 +231,7 @@ const table: Table = {
                         line.push(ranges.join(''))
                     }
                 }
-                tags.push(renderLine(line.join('')))
+                inner.push(renderLine(line.join('')))
             }
             const line = []
             line.push(key)
@@ -234,7 +241,10 @@ const table: Table = {
             line.push(renderRange(':', style[':']))
             line.push(value)
             line.push(renderRange('', style.wrapup))
-            tags.push(renderLine(line.join('')))
+            inner.push(renderLine(line.join('')))
+        }
+        if (node.properties.length) {
+            tags.push(renderBlock(inner.join('')))
         }
         tags.push(renderRange('}', style.blockEnd))
         return tags.join('')

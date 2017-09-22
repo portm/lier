@@ -1,17 +1,17 @@
 import { types } from '../../'
 import { Node, Type } from '../interface'
 
-class Context {
+export class Context {
     root = null
 }
 
-interface Table {
-    start: (any) => string
-    router: (any, context: Context) => any
+export interface Visitor {
+    start: (node, context: Context) => any
+    router: (node, context: Context) => any
     [x: number]: (node: any, context: Context) => any
 }
 
-const getDecorateArgs = (decorate, index) => {
+export const getDecorateArgs = (decorate, index) => {
     if (!decorate[index]) {
         return null
     }
@@ -21,7 +21,7 @@ const getDecorateArgs = (decorate, index) => {
     return decorate[index].value.value
 }
 
-const setDecorator = (decorators, target) => {
+export const setDecorator = (decorators, target) => {
     for (const decorate of decorators) {
         if (!types[decorate.name]) {
             throw new Error('not implemented decorate:' + decorate.name)
@@ -60,13 +60,12 @@ const typeMapping = {
     bool: 'boolean',
 }
 
-const table: Table = {
-    start: node => {
-        const context = new Context()
+export const visitor: Visitor = {
+    start: function (node, context) {
         context.root = node
-        return table.router(node, context)
+        return this.router(node, context)
     },
-    router: (node, context) => {
+    router: function (node, context) {
         if (!node) {
             return node
         }
@@ -75,20 +74,20 @@ const table: Table = {
             if (!node.length) {
                 return null
             }
-            return table.router(node[node.length - 1], context)
+            return this.router(node[node.length - 1], context)
         }
 
-        const handler = table[node.type]
+        const handler = this[node.type]
 
         if (!handler) {
             return node
         }
 
-        return handler(node, context)
+        return handler.call(this, node, context)
     },
-    [Type.unary]: (node, context) => {
+    [Type.unary]: function (node, context) {
         const operator = node.operator
-        const argument = table.router(node.argument, context)
+        const argument = this.router(node.argument, context)
 
         if (operator !== 'not') {
             return argument
@@ -98,7 +97,7 @@ const table: Table = {
             not: argument
         }
     },
-    [Type.member]: (node, context) => {
+    [Type.member]: function (node, context) {
         const members = []
         let self = node
         while (self) {
@@ -123,12 +122,12 @@ const table: Table = {
                 } else if (property.type === Type.identifier) {
                     members.unshift(property.value)
                 } else {
-                    members.unshift(table.router(property, context))
+                    members.unshift(this.router(property, context))
                 }
             } else if (self.type === Type.type && self.value.type === Type.this) {
                 members.unshift('#')
             } else {
-                members.unshift(table.router(self, context))
+                members.unshift(this.router(self, context))
             }
             self = self.object
         }
@@ -152,10 +151,10 @@ const table: Table = {
         }
         return ret
     },
-    [Type.binary]: (node, context) => {
+    [Type.binary]: function (node, context) {
         const operator = node.operator
-        const left = table.router(node.left, context)
-        const right = table.router(node.right, context)
+        const left = this.router(node.left, context)
+        const right = this.router(node.right, context)
 
         if (operator !== '|' && operator !== '&') {
             return {}
@@ -209,11 +208,11 @@ const table: Table = {
             }
         }
     },
-    [Type.object]: (node, context) => {
+    [Type.object]: function (node, context) {
         const object: any = {}
         for (const property of node.properties) {
             const key = property.key.value
-            const value = table.router(property.value, context)
+            const value = this.router(property.value, context)
             if (value === null) {
                 continue
             }
@@ -249,21 +248,21 @@ const table: Table = {
         }
         return object
     },
-    [Type.match]: (node, context) => {
+    [Type.match]: function (node, context) {
         return {}
     },
-    [Type.enum]: (node, context) => {
+    [Type.enum]: function (node, context) {
         const compound = {
             enum: []
         }
         for (const arg of node.arguments) {
-            const item = table.router(arg, context)
+            const item = this.router(arg, context)
             compound.enum.push(item && item.hasOwnProperty('const') ? item.const : item)
         }
         return compound
     },
-    [Type.call]: (node, context) => {
-        const callee = table.router(node.callee, context)
+    [Type.call]: function (node, context) {
+        const callee = this.router(node.callee, context)
         if (callee !== 'oneOf' && callee !== 'anyOf' && callee !== 'allOf' && callee !== 'not') {
             return {}
         }
@@ -271,20 +270,20 @@ const table: Table = {
             [callee]: []
         }
         for (const arg of node.arguments) {
-            compound[callee].push(table.router(arg, context))
+            compound[callee].push(this.router(arg, context))
         }
         return compound
     },
-    [Type.array]: (node, context) => {
+    [Type.array]: function (node, context) {
         const array = {
             items: []
         }
         for (const item of node.value) {
-            array.items.push(table.router(item, context))
+            array.items.push(this.router(item, context))
         }
         return array
     },
-    [Type.identifier]: (node, context) => {
+    [Type.identifier]: function (node, context) {
         if (node.value === 'never') {
             return false
         }
@@ -295,52 +294,52 @@ const table: Table = {
             type: typeMapping[node.value] || node.value
         }
     },
-    [Type.null]: (node, context) => {
+    [Type.null]: function (node, context) {
         return {
             const: null,
         }
     },
-    [Type.self]: (node, context) => {
+    [Type.self]: function (node, context) {
         return {}
     },
-    [Type.this]: (node, context) => {
+    [Type.this]: function (node, context) {
         return {}
     },
-    [Type.boolean]: (node, context) => {
+    [Type.boolean]: function (node, context) {
         return {
             const: node.value,
         }
     },
-    [Type.number]: (node, context) => {
+    [Type.number]: function (node, context) {
         return {
             const: node.value,
         }
     },
-    [Type.string]: (node, context) => {
+    [Type.string]: function (node, context) {
         return {
             const: node.value,
         }
     },
-    [Type.regular]: (node, context) => {
+    [Type.regular]: function (node, context) {
         return {
             pattern: node.value.source
         }
     },
-    [Type.type]: (node, context) => {
+    [Type.type]: function (node, context) {
         if (node.value.type === Type.identifier && !types.hasOwnProperty(node.value.value)) {
             throw new Error('not implemented type:' + node.value.value)
         }
-        const value = table.router(node.value, context)
+        const value = this.router(node.value, context)
         return value
     },
-    [Type.spread]: (node, context) => {
+    [Type.spread]: function (node, context) {
         return {}
     },
-    [Type.optional]: (node, context) => {
+    [Type.optional]: function (node, context) {
         return {}
     }
 }
 
-export default (ast: Node): string => {
-    return table.start(ast)
+export default (ast: Node): any => {
+    return visitor.start(ast, new Context())
 }

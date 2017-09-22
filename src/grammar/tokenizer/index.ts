@@ -476,7 +476,7 @@ const tokenizer = (style: Style) => {
         },
 
         [State.string]: (stream, context) => {
-            const regex = new RegExp(`^${context.string}([^${context.string}\\\\\\r\\n]+|\\\\.)*${context.string}`)
+            const regex = new RegExp(`^${context.string}([^${context.string}\\\\]|\\\\.)*${context.string}`)
             if (stream.match(regex)) {
                 context.string = ''
                 context.backed = true
@@ -490,7 +490,7 @@ const tokenizer = (style: Style) => {
         },
 
         [State.backtickString]: (stream, context) => {
-            const regex = /^(?:[^`\\]+|\\.)+/
+            const regex = /^(?:[^`\\]|\\.)+/
             if (stream.match(regex)) {
                 return context.style
             }

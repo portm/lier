@@ -133,10 +133,11 @@ const table: Table = {
             members.shift()
             return packing(value => {
                 let ret = value
+                let innerDeep = deep
                 for (const item of members) {
                     ret = ret[item]
                 }
-                while (deep--) {
+                while (innerDeep--) {
                     ret = [ret]
                 }
                 return ret

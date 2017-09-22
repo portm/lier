@@ -130,11 +130,15 @@ const convertString = (data) => {
 }
 
 const convertInteger = (data) => {
+    const format = {
+        int32: 'int',
+        int64: 'long',
+    }
     return {
         type: Type.type,
         value: {
             type: Type.identifier,
-            value: 'int',
+            value: format[data.format] || 'int',
         } as lier.IdentifierNode,
     } as lier.TypeNode
 }
@@ -439,6 +443,21 @@ const pushDescription = (decorators, value) => {
                     value: {
                         type: Type.string,
                         value: value.description,
+                    } as lier.StringNode,
+                } as lier.TypeNode,
+            ],
+        } as lier.DecoratorNode)
+    }
+    if (value.items && value.items.description) {
+        decorators.push({
+            type: Type.decorator,
+            name: '_',
+            arguments: [
+                {
+                    type: Type.type,
+                    value: {
+                        type: Type.string,
+                        value: value.items.description,
                     } as lier.StringNode,
                 } as lier.TypeNode,
             ],
