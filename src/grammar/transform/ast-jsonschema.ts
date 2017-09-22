@@ -120,7 +120,11 @@ export const visitor: Visitor = {
                 ) {
                     members.unshift(property.value.type === Type.null ? null : property.value.value)
                 } else if (property.type === Type.identifier) {
-                    members.unshift(property.value)
+                    let value = property.value
+                    if (value === '$definitions') {
+                        value = 'definitions'
+                    }
+                    members.unshift(value)
                 } else {
                     members.unshift(this.router(property, context))
                 }
@@ -214,12 +218,16 @@ export const visitor: Visitor = {
             const key = property.key.value
             if (key === '$definitions') {
                 object.definitions = {}
-                if (property.value.type === Type.object) {
-                    for (const prop of property.value.properties) {
+                let value = property.value
+                if (value.type === Type.type) {
+                    value = value.value
+                }
+                if (value.type === Type.object) {
+                    for (const prop of value.properties) {
                         object.definitions[prop.key.value] = this.router(prop.value, context)
                     }
                 } else {
-                    object.definitions = this.router(property.value, context)
+                    object.definitions = this.router(value, context)
                 }
                 continue
             }
