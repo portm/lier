@@ -7,6 +7,10 @@ const dollar = [
         text: '$definitions',
         displayText: '$definitions',
     },
+    {
+        text: '$export',
+        displayText: '$export',
+    },
 ]
 
 export default dollar

@@ -1,4 +1,4 @@
-import { Path, Root, Type } from './interfaces'
+import { Path, Root, Type, controlKeys } from './interfaces'
 import _ from './utils'
 import validate from './validate'
 
@@ -23,12 +23,12 @@ function mockObject (type, data, path: Path, root: Root) {
 
         const currType: Type = type[k]
         if (_.isControlKey(k)) {
-            if (k === '$rest') {
+            if (k === controlKeys.rest) {
                 if (currType.hasOwnProperty('keyMock'))
                     walk(currType, data, path.concat(currType.keyMock), root)
                 else
                     throw new TypeError('$rest should mock with keyMock')
-            } else if (k === '$definitions') {
+            } else if (k === controlKeys.definitions) {
                 // we don't have to handle definitions
             } else {
                 throw new TypeError('unknown control key')
@@ -69,6 +69,10 @@ function walk (type, data, path: Path, root: Root) {
         if (nodes.has(type)) {
             // when cycle is detected
             data[key] = nodes.get(type)
+        } else if (type.hasOwnProperty(controlKeys.export)) {
+            const exportType = type[controlKeys.export]
+            const value = walk(exportType, data, path.concat(controlKeys.export), root)
+            data[key] = value
         } else {
             data[key] = node
 

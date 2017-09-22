@@ -41,7 +41,9 @@ function validateArray (data, type, path: Path, root: Root) {
 }
 
 function validateObject (data, type, path: Path, root: Root) {
-    if (_.isObjectLike(data)) {
+    if (type.hasOwnProperty(controlKeys.export)) {
+        walk(data, type[controlKeys.export], path.concat(controlKeys.export), root)
+    } else if (_.isObjectLike(data)) {
         const matchedKeys = new Set<string>()
         let restType
 

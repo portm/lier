@@ -74,4 +74,5 @@ export interface Type {
 export const controlKeys = {
     rest: '$rest',
     definitions: '$definitions',
+    export: '$export',
 }
