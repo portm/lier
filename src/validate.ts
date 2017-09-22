@@ -100,9 +100,10 @@ function walk (data, type, path: Path, root: Root) {
         if (root.nodes.has(data) && root.nodes.has(type))
             return
 
-        const nodes = root.nodes as Set<any>
-        nodes.add(type)
-        nodes.add(data)
+        const store = root.nodes
+        root.nodes = new Set(root.nodes)
+        root.nodes.add(type)
+        root.nodes.add(data)
 
         if (type instanceof Array) {
             validateArray(data, type, path, root)
@@ -111,6 +112,7 @@ function walk (data, type, path: Path, root: Root) {
         } else {
             validateExplicitValue(data, type, path, root)
         }
+        root.nodes = store
     } else if (_.isUndefined(type)) {
         // to prevent miss type of type name
         throw new TypeError('type must not be void')
