@@ -1,6 +1,6 @@
 {
   "name": "lier",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "a type validator",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "autoInstallDeps": true
   },
   "files": [
-    "src/**/*.{js,d.ts}",
+    "src/**/*.{js,d.ts,css}",
     "*.{js,d.ts}"
   ],
   "repository": {
