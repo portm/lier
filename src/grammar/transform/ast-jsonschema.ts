@@ -212,8 +212,23 @@ export const visitor: Visitor = {
         const object: any = {}
         for (const property of node.properties) {
             const key = property.key.value
+            if (key === '$definitions') {
+                object.definitions = {}
+                if (property.value.type === Type.object) {
+                    for (const prop of property.value.properties) {
+                        object.definitions[prop.key.value] = this.router(prop.value, context)
+                    }
+                } else {
+                    object.definitions = this.router(property.value, context)
+                }
+                continue
+            }
             const value = this.router(property.value, context)
             if (value === null) {
+                continue
+            }
+            if (key === '$export') {
+                Object.assign(object, value)
                 continue
             }
             if (property.key.type === Type.string || property.key.type === Type.number) {

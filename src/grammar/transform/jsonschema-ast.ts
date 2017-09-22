@@ -552,7 +552,7 @@ const directConvert = (data): any => {
 const directConvertArray = (data) => {
     const items = []
     for (const item of data) {
-        items.push(directConvert(item))
+        items.push(convert(item))
     }
     return {
         type: Type.array,
@@ -567,7 +567,7 @@ const directConvertObject = (data) => {
             decorators: [],
             optional: false,
             key: convertKey(key),
-            value: directConvert(data[key]),
+            value: convert(data[key]),
         } as lier.PropertyNode)
     }
     return {
