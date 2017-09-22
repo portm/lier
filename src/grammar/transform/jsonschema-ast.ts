@@ -120,13 +120,13 @@ const convertNull = (data) => {
 }
 
 const convertString = (data) => {
-    return {
+    return convertExport(data, {
         type: Type.type,
         value: {
             type: Type.identifier,
             value: 'str',
         } as lier.IdentifierNode,
-    } as lier.TypeNode
+    } as lier.TypeNode)
 }
 
 const convertInteger = (data) => {
@@ -134,33 +134,33 @@ const convertInteger = (data) => {
         int32: 'int',
         int64: 'long',
     }
-    return {
+    return convertExport(data, {
         type: Type.type,
         value: {
             type: Type.identifier,
             value: format[data.format] || 'int',
         } as lier.IdentifierNode,
-    } as lier.TypeNode
+    } as lier.TypeNode)
 }
 
 const convertNumber = (data) => {
-    return {
+    return convertExport(data, {
         type: Type.type,
         value: {
             type: Type.identifier,
             value: 'number',
         } as lier.IdentifierNode,
-    } as lier.TypeNode
+    } as lier.TypeNode)
 }
 
 const convertBoolean = (data) => {
-    return {
+    return convertExport(data, {
         type: Type.type,
         value: {
             type: Type.identifier,
             value: 'bool',
         } as lier.IdentifierNode,
-    } as lier.TypeNode
+    } as lier.TypeNode)
 }
 
 const convertEnum = (data) => {
@@ -168,10 +168,10 @@ const convertEnum = (data) => {
     for (const item of data.enum) {
         args.push(convert(item, true))
     }
-    return {
+    return convertExport(data, {
         type: Type.enum,
         arguments: args,
-    } as lier.EnumNode
+    } as lier.EnumNode)
 }
 
 const convertArray = (data) => {
@@ -181,11 +181,11 @@ const convertArray = (data) => {
             value: [],
         } as lier.ArrayNode
     }
-    return {
+    return convertExport(data, {
         type: Type.member,
         object: convert(data.items),
         property: [],
-    } as lier.MemberNode
+    } as lier.MemberNode)
 }
 
 const convertObject = (data) => {
@@ -202,7 +202,7 @@ const convertObject = (data) => {
             }
             properties.push({
                 decorators,
-                optional: required.indexOf(key) === -1,
+                optional: data.isDefinitions ? false : required.indexOf(key) === -1,
                 key: convertKey(key),
                 value: convert(value),
             } as lier.PropertyNode)
@@ -218,7 +218,8 @@ const convertObject = (data) => {
             },
             value: convert({
                 properties: data.definitions,
-            }),
+                isDefinitions: true,
+            }, true),
         })
     }
     return {
@@ -230,7 +231,7 @@ const convertObject = (data) => {
 const convertRef = (data) => {
     const path = data.$ref.split('/')
     path.shift()
-    return path.reduce((result, element) => {
+    const node = path.reduce((result, element) => {
         let property
         if (isidentifier(element)) {
             property = {
@@ -259,6 +260,7 @@ const convertRef = (data) => {
             type: Type.this,
         } as lier.ThisNode,
     } as lier.TypeNode)
+    return convertExport(data, node)
 }
 
 const convertOneOf = (data) => {
@@ -267,7 +269,7 @@ const convertOneOf = (data) => {
     for (const key of Object.keys(object)) {
         args.push(convert(object[key]))
     }
-    return {
+    return convertExport(data, {
         type: Type.call,
         callee: {
             type: Type.type,
@@ -277,7 +279,7 @@ const convertOneOf = (data) => {
             } as lier.IdentifierNode,
         } as lier.TypeNode,
         arguments: args,
-    } as lier.CallNode
+    } as lier.CallNode)
 }
 
 const convertAnyOf = (data) => {
@@ -296,7 +298,7 @@ const convertAnyOf = (data) => {
         } as lier.TypeNode
     }
     const top = args.shift()
-    return args.reduce((result, element) => {
+    const node = args.reduce((result, element) => {
         return {
             type: Type.binary,
             operator: '|',
@@ -304,6 +306,7 @@ const convertAnyOf = (data) => {
             right: element,
         } as lier.BinaryNode
     }, top)
+    return convertExport(data, node)
 }
 
 const convertAllOf = (data) => {
@@ -322,7 +325,7 @@ const convertAllOf = (data) => {
         } as lier.TypeNode
     }
     const top = args.shift()
-    return args.reduce((result, element) => {
+    const node = args.reduce((result, element) => {
         return {
             type: Type.binary,
             operator: '&',
@@ -330,6 +333,39 @@ const convertAllOf = (data) => {
             right: element,
         } as lier.BinaryNode
     }, top)
+    return convertExport(data, node)
+}
+
+const convertExport = (data, property) => {
+    if (!data.hasOwnProperty('definitions')) {
+        return property
+    }
+    return {
+        type: Type.object,
+        properties: [
+            {
+                decorators: [],
+                optional: false,
+                key: {
+                    type: Type.identifier,
+                    value: '$definitions',
+                },
+                value: convert({
+                    properties: data.definitions,
+                    isDefinitions: true,
+                }),
+            },
+            {
+                decorators: [],
+                optional: false,
+                key: {
+                    type: Type.identifier,
+                    value: '$export',
+                } as lier.Node,
+                value: property,
+            } as lier.PropertyNode
+        ],
+    } as lier.ObjectNode
 }
 
 const pushRange = (decorators, value) => {
