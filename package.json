@@ -1,6 +1,6 @@
 {
   "name": "lier",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "a type validator",
   "main": "index.js",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "files": [
     "src/**/*.{js,d.ts,css}",
-    "*.{js,d.ts}"
+    "index.{js,d.ts}"
   ],
   "repository": {
     "type": "git",
