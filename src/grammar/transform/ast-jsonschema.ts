@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { Node, Type } from '../interface'
+import * as _ from 'lodash'
 
 export class Context {
     root = null
@@ -236,7 +237,7 @@ export const visitor: Visitor = {
                 continue
             }
             if (key === '$export') {
-                Object.assign(object, value)
+                _.assign(object, value)
                 continue
             }
             if (property.key.type === Type.string || property.key.type === Type.number) {

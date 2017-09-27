@@ -4,8 +4,13 @@ import * as RandExp from 'randexp'
 const isKeyPatternReg = /^\/[^\/]/
 const keyPatternReg = /^\/([^\/][\s\S]*)\/([igmuy]*)$/
 const isControlKeyReg = /^\$[^\$]/
+const MAX_SAFE_INTEGER = 9007199254740991
+const MIN_SAFE_INTEGER = -9007199254740991
 
 const self = {
+    MAX_SAFE_INTEGER,
+    MIN_SAFE_INTEGER,
+
     isControlKey (str: string) {
         return isControlKeyReg.test(str)
     },
@@ -66,16 +71,12 @@ const self = {
         return val instanceof Date
     },
 
-    isSymbol (val): val is Symbol {
-        return typeof val === 'symbol'
-    },
-
     isFunction (val): val is Function {
         return typeof val === 'function'
     },
 
     isInteger (val): val is number {
-        if (Number.isInteger(val)) {
+        if (_.isInteger(val)) {
             return true
         }
 
@@ -83,7 +84,7 @@ const self = {
             return false
         }
 
-        return val > Number.MAX_SAFE_INTEGER || val < Number.MIN_SAFE_INTEGER
+        return val > MAX_SAFE_INTEGER || val < MIN_SAFE_INTEGER
     },
 
     random (min, max) {
@@ -94,10 +95,10 @@ const self = {
         if (self.isObjectLike(target) && self.isObjectLike(source)) {
             for (const key in source) {
                 if (self.isObjectLike(source[key])) {
-                    if (!target[key]) Object.assign(target, { [key]: {} })
+                    if (!target[key]) _.assign(target, { [key]: {} })
                     self.merge(target[key], source[key])
                 } else {
-                    Object.assign(target, { [key]: source[key] })
+                    _.assign(target, { [key]: source[key] })
                 }
             }
         }

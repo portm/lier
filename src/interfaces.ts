@@ -1,5 +1,7 @@
 import inspect from './inspect'
 
+declare let Set
+
 export interface Options {
     banExtra: boolean
 }
@@ -39,7 +41,7 @@ export class LierError {
     }
 }
 
-export type Nodes = Set<any> | Map<any, any>
+export type Nodes = any
 
 export class Root {
     data: any

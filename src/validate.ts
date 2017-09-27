@@ -5,6 +5,8 @@
 import { controlKeys, LierError, Path, Root } from './interfaces'
 import _ from './utils'
 
+declare let Set
+
 function validate (data, type, path: Path = this.path, root: Root = this.root) {
     walk(data, type, path, root)
 }
@@ -44,7 +46,7 @@ function validateObject (data, type, path: Path, root: Root) {
     if (type.hasOwnProperty(controlKeys.export)) {
         walk(data, type[controlKeys.export], path.concat(controlKeys.export), root)
     } else if (_.isObjectLike(data)) {
-        const matchedKeys = new Set<string>()
+        const matchedKeys = new Set
         let restType
 
         for (let k in type) {

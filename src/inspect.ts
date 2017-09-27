@@ -2,6 +2,8 @@
 
 import br from './brush'
 
+declare let Map, Set, Symbol
+
 const hasMap = typeof Map === 'function' && Map.prototype
 const mapSizeDescriptor = Object.getOwnPropertyDescriptor && hasMap ? Object.getOwnPropertyDescriptor(Map.prototype, 'size') : null
 const mapSize = hasMap && mapSizeDescriptor && typeof mapSizeDescriptor.get === 'function' ? mapSizeDescriptor.get : null

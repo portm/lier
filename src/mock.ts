@@ -2,6 +2,8 @@ import { Path, Root, Type, controlKeys } from './interfaces'
 import _ from './utils'
 import validate from './validate'
 
+declare let Map
+
 function getKey (path: Path) {
     return path.length === 0 ? 'data' : path[path.length - 1]
 }
@@ -64,7 +66,7 @@ function walk (type, data, path: Path, root: Root) {
         const isArray = type instanceof Array
         const node = isArray ? [] : {}
 
-        const nodes = root.nodes as Map<any, any>
+        const nodes = root.nodes
 
         if (nodes.has(type)) {
             // when cycle is detected

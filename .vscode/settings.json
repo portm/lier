@@ -6,6 +6,7 @@
     "src/**/*.d.ts": "explorerExcludedFiles",
     "test/**/*.js": "explorerExcludedFiles",
     "test/**/*.d.ts": "explorerExcludedFiles",
-    "node_modules": "explorerExcludedFiles"
+    "node_modules": "explorerExcludedFiles",
+    ".DS_Store": "explorerExcludedFiles"
   }
 }

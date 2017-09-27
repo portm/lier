@@ -3,6 +3,7 @@ import inspect from './inspect'
 import { Context, LierError, Root, Type } from './interfaces'
 import _ from './utils'
 import validate from './validate'
+import utils from './utils'
 
 function bool (ctx: Context): any {
     if (ctx.root.isMock)
@@ -67,7 +68,7 @@ function float (ctx: Context): any {
 
     const v = ctx.data
 
-    if (!_.isNumber(v) || v < Number.MIN_SAFE_INTEGER || v > Number.MAX_SAFE_INTEGER)
+    if (!_.isNumber(v) || v < utils.MIN_SAFE_INTEGER || v > utils.MAX_SAFE_INTEGER)
         return [v, `is not float`]
 }
 
@@ -77,7 +78,7 @@ function double (ctx: Context): any {
 
     const v = ctx.data
 
-    if (!_.isNumber(v) || v < Number.MIN_SAFE_INTEGER || v >  Number.MAX_SAFE_INTEGER)
+    if (!_.isNumber(v) || v < utils.MIN_SAFE_INTEGER || v >  utils.MAX_SAFE_INTEGER)
         return [v, `is not double`]
 }
 
@@ -324,8 +325,8 @@ function description (desc: string, type): Type {
 
 function range (...args): Type {
     const type = args.pop()
-    let max = Number.MAX_SAFE_INTEGER
-    let min = Number.MIN_SAFE_INTEGER
+    let max = utils.MAX_SAFE_INTEGER
+    let min = utils.MIN_SAFE_INTEGER
     if (args.length === 2) {
         max = args[1]
         min = args[0]

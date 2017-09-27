@@ -12,6 +12,7 @@
   },
   "files": [
     "src/**/*.{js,d.ts,css}",
+    "typings/**/*.{js,d.ts,css}",
     "index.{js,d.ts}"
   ],
   "repository": {
@@ -25,7 +26,6 @@
   "license": "ISC",
   "devDependencies": {
     "junit": "^1.4.9",
-    "pegjs": "^0.10.0",
     "typescript": "^2.5.2",
     "typings": "^2.1.1"
   },
@@ -33,6 +33,7 @@
     "big.js": "^3.2.0",
     "lodash": "^4.17.4",
     "nokit": "^0.23.26",
+    "pegjs": "^0.10.0",
     "randexp": "^0.4.6"
   }
 }
