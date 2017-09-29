@@ -2,7 +2,7 @@ import * as lier from '../interface'
 
 const Type = lier.Type
 
-const convert = (data, direct?) => {
+const convert = (data) => {
     if (data == null) {
         return convertNull(data)
     }
@@ -56,17 +56,7 @@ const convert = (data, direct?) => {
         return convertObject(data)
     }
 
-    if (direct) {
-        return directConvert(data)
-    }
-
-    return {
-        type: Type.type,
-        value: {
-            type: Type.identifier,
-            value: 'any',
-        } as lier.IdentifierNode,
-    } as lier.TypeNode
+    return directConvert(data)
 }
 
 const isnumber = (value) => {
@@ -166,7 +156,7 @@ const convertBoolean = (data) => {
 const convertEnum = (data) => {
     const args = []
     for (const item of data.enum) {
-        args.push(convert(item, true))
+        args.push(convert(item))
     }
     return convertExport(data, {
         type: Type.enum,
@@ -219,7 +209,7 @@ const convertObject = (data) => {
             value: convert({
                 properties: data.definitions,
                 isDefinitions: true,
-            }, true),
+            }),
         })
     }
     return {
