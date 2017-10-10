@@ -9,26 +9,25 @@ const levelUp = list => {
             return
         }
         ++item.weight
-
-        let left = 0,
-            right = index
-
-        while (left <= right) {
-            const mid = Math.floor((left + right) / 2)
-
-            if (list[mid].weight > item.weight) {
-                left = mid + 1
+        let low = 0
+        let high = index
+        let mid = 0
+        while (low <= high) {
+            mid = (low + high) >> 1
+            const middle = list[mid]
+            const prev = mid === 0 ? Infinity : list[mid - 1].weight
+            if (item.weight >= middle.weight && item.weight < prev) {
+                break
+            }
+            if (middle.weight > item.weight) {
+                low = mid + 1
             } else {
-                right = mid - 1
+                high = mid - 1
             }
         }
-
-        const mid = Math.max(left, right)
-
         if (list[mid] === list[index]) {
             return
         }
-
         list.splice(index, 1)
         list.splice(mid, 0, item)
     }
