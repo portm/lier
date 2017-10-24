@@ -4,7 +4,14 @@ import * as lier from '../interface'
 
 const Type = lier.Type
 
-const convert = (data) => {
+const getTypeValue = (base) => {
+    if (base && base.type === Type.type) {
+        base = base.value
+    }
+    return base
+}
+
+const convert = (data, base?) => {
     if (data == null) {
         return convertNull(data)
     }
@@ -24,11 +31,11 @@ const convert = (data) => {
     }
 
     if (type === 'Array') {
-        return convertArray(data)
+        return convertArray(data, base)
     }
 
     if (type === 'Object') {
-        return convertObject(data)
+        return convertObject(data, base)
     }
 
     return convertNull(data)
@@ -104,12 +111,15 @@ const convertInteger = (data) => {
     } as lier.TypeNode
 }
 
+const MAX_INTEGER = Math.pow(2, 31) - 1
+const MIN_INTEGER = -Math.pow(2, 31)
+
 const convertNumber = (data) => {
     return {
         type: Type.type,
         value: {
             type: Type.identifier,
-            value: 'number',
+            value: data <= MAX_INTEGER && data >= MIN_INTEGER ? 'int' : 'number',
         } as lier.IdentifierNode,
     } as lier.TypeNode
 }
@@ -124,11 +134,20 @@ const convertBoolean = (data) => {
     } as lier.TypeNode
 }
 
-const convertArray = (data): any => {
+const convertArray = (data, base): any => {
     const types = []
     const caches = []
-    for (const item of data) {
-        const node = convert(item)
+    base = getTypeValue(base)
+    let old = {}
+    if (base) {
+        if (base.type === Type.member && base.property && !base.property.length) {
+            old = getTypeValue(base.object)
+        } else if (base.type === Type.object || base instanceof Array) {
+            old = base
+        }
+    }
+    for (let i = 0; i < data.length; ++ i) {
+        const item = data[i]
         let flag = true
         for (const type of caches) {
             if (!validate(item, type)) {
@@ -136,6 +155,16 @@ const convertArray = (data): any => {
             }
         }
         if (flag) {
+            let oldItem = old
+            if (old instanceof Array) {
+                for (let type of old) {
+                    type = getTypeValue(type)
+                    if (validate(item, type)) {
+                        oldItem = type
+                    }
+                }
+            }
+            const node = convert(item, oldItem)
             types.push(node)
             caches.push(compile(node))
         }
@@ -160,14 +189,21 @@ const convertArray = (data): any => {
     } as lier.MemberNode
 }
 
-const convertObject = (data) => {
+const convertObject = (data, base) => {
+    const old = {}
+    base = getTypeValue(base)
+    if (base && base.type === Type.object) {
+        for (const property of base.properties) {
+            old[property.key.value] = property
+        }
+    }
     const properties = []
     for (const key of Object.keys(data)) {
         properties.push({
-            decorators: [],
+            decorators: old[key] ? old[key].decorators : [],
             optional: false,
             key: convertKey(key),
-            value: convert(data[key]),
+            value: convert(data[key], old[key] ? old[key].value : null),
         } as lier.PropertyNode)
     }
     return {

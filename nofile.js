@@ -21,4 +21,17 @@ module.exports = function (task) {
             return kit.spawn('junit', ['test/*.js'])
         })
     })
+
+    task('lab', function () {
+        return pegBuild().then(function () {
+            return kit.spawn('noe', [
+                '-b', 'node',
+                '-w', 'test/lab/lab.js', '--',
+    
+                '--harmony',
+    
+                'test/lab/lab.js'
+            ]);
+        })
+    })
 }

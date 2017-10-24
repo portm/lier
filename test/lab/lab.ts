@@ -1,11 +1,13 @@
 import * as lier from '../../src'
-import inspect from '../../src/inspect'
 
-const { str, Enum } = lier.types
+const base = lier.parse(`({
+    @_('d1')
+    a: any
+    @_('d2')
+    c: any
+})[]`)
 
-const ret = lier.validate(
-    {a: {b: 1}, c: 1},
-    {a: str, c: Enum(2, 3, 4)},
-)
-
-console.log(ret + '')
+console.log(lier.stringify(lier.deduction([{
+    a: 1,
+    b: '213'
+}], base)))
