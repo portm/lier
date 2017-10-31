@@ -42,7 +42,7 @@ const convert = (data, base?) => {
 }
 
 const isnumber = (value) => {
-    return !isNaN(+value)
+    return /^\d+$/.test(value)
 }
 
 const isidentifier = (value) => {
