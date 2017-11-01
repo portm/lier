@@ -11,6 +11,22 @@ const getTypeValue = (base) => {
     return base
 }
 
+const getOrList = (base) => {
+    if (base && base.type === Type.binary && base.operator === '|') {
+        const left = getOrList(base.left)
+        const right = getOrList(base.right)
+        let ret = []
+        if (left) {
+            ret = ret.concat(left)
+        }
+        if (right) {
+            ret = ret.concat(right)
+        }
+        return ret
+    }
+    return base
+}
+
 const convert = (data, base?) => {
     if (data == null) {
         return convertNull(data)
@@ -146,6 +162,9 @@ const convertArray = (data, base): any => {
             old = base
         }
     }
+    if (old instanceof Array) {
+        old = getOrList(old[old.length - 1])
+    }
     for (let i = 0; i < data.length; ++ i) {
         const item = data[i]
         let flag = true
@@ -161,6 +180,7 @@ const convertArray = (data, base): any => {
                     type = getTypeValue(type)
                     if (validate(item, type)) {
                         oldItem = type
+                        break
                     }
                 }
             }
