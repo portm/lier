@@ -212,6 +212,23 @@ const convertObject = (data) => {
             }),
         })
     }
+    if (data.hasOwnProperty('additionalProperties')) {
+        properties.push({
+            decorators: [],
+            optional: false,
+            key: {
+                type: Type.identifier,
+                value: '$rest',
+            },
+            value: data.additionalProperties ? convert(data.additionalProperties) : {
+                type: Type.type,
+                value: {
+                    type: Type.identifier,
+                    value: 'never',
+                }
+            },
+        })
+    }
     return {
         type: Type.object,
         properties,

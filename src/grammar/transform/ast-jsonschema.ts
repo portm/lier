@@ -214,7 +214,9 @@ export const visitor: Visitor = {
         }
     },
     [Type.object]: function (node, context) {
-        const object: any = {}
+        const object: any = {
+            type: 'object',
+        }
         for (const property of node.properties) {
             const key = property.key.value
             if (key === '$definitions') {
