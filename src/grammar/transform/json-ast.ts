@@ -135,7 +135,7 @@ const convertNumber = (data) => {
         type: Type.type,
         value: {
             type: Type.identifier,
-            value: data <= MAX_INTEGER && data >= MIN_INTEGER ? 'int' : 'number',
+            value: data <= MAX_INTEGER && data >= MIN_INTEGER && ((data | 0) === data) ? 'int' : 'number',
         } as lier.IdentifierNode,
     } as lier.TypeNode
 }
