@@ -239,6 +239,7 @@ export const visitor: Visitor = {
                 continue
             }
             if (key === '$export') {
+                delete object.type
                 _.assign(object, value)
                 continue
             }
