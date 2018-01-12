@@ -185,7 +185,7 @@ const table: Table = {
         return node.value
     },
     [Type.string]: (node, context, indent) => {
-        return `'${node.value.replace('\'', '\\\'')}'`
+        return `'${node.value.replace(/'/g, '\\\'')}'`
     },
     [Type.regular]: (node, context, indent) => {
         return node.value
