@@ -341,11 +341,16 @@ function range (...args): Type {
             throw new TypeError('"range" must be used with "mock" type')
 
         const v = ctx.data
-        if (!_.isNumber(v)) {
-            return [v, `is not number`]
-        }
-        if (v > max || v < min) {
-            return [v, `is not in range(${min}, ${max})`]
+        if (_.isNumber(v)) {
+            if (v > max || v < min) {
+                return [v, `is not in range(${min}, ${max})`]
+            }
+        } else if (_.isString(v) || _.isArray(v)) {
+            if (v.length > max || v.length < min) {
+                return [v, `is not in range(${min}, ${max})`]
+            }
+        } else {
+            return [v, `is not in number, array, string`]
         }
         ctx.validate(v, type)
     }
