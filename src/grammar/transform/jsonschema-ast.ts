@@ -191,6 +191,7 @@ const convertObject = (data) => {
                 pushRange(decorators, value)
             }
             properties.push({
+                type: Type.property,
                 decorators,
                 optional: data.isDefinitions ? false : required.indexOf(key) === -1,
                 key: convertKey(key),
@@ -363,6 +364,7 @@ const convertExport = (data, property) => {
                 }),
             },
             {
+                type: Type.property,
                 decorators: [],
                 optional: false,
                 key: {
@@ -571,6 +573,7 @@ const directConvertObject = (data) => {
     const properties = []
     for (const key of Object.keys(data)) {
         properties.push({
+            type: Type.property,
             decorators: [],
             optional: false,
             key: convertKey(key),
