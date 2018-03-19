@@ -8,7 +8,7 @@ declare let Promise
 
 const {
     int, uint, str, anyOf, oneOf, not, merge,
-    Enum, allOf, never, ref, self, mock,
+    Enum, allOf, never, tuple, ref, self, mock,
     description, eq, match, range, nil,
 } = lier.types
 
@@ -75,6 +75,27 @@ export = (it) => {
 
     test('never', { a: { b: undefined } }, { a: { b: never } },
         [{ path: ['a', 'b'], message: ['property should be void'] }],
+    )
+
+    test('tuple',
+        [{ a: 10 }, { b: 10 }],
+        tuple([{ a: int }, { b: uint }]),
+    )
+    test('tuple err',
+        [{ a: 10 }, { b: -10 }],
+        tuple([{ a: int }, { b: uint }]),
+        [ { path: [ 'b' ],
+      message: [ '-10', 'is out of range of', 'uint32' ] } ]
+    )
+    test('tuple err 1',
+        1,
+        [{ a: int }, { b: uint }],
+        [ { path: [],
+            message: 
+             [ 1,
+               'is not',
+               [ { a: int }, { b: uint } ] ] } ]
+      
     )
 
     it('description', () => {

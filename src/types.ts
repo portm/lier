@@ -90,6 +90,26 @@ function str (ctx: Context): any {
         return [ctx.data, `is not string`]
 }
 
+function tuple (type): Type {
+    return function (ctx: Context) {
+        if (ctx.root.isMock) {
+            const mocks = []
+            for (const item of type) {
+                mocks.push(ctx.mock(item))
+            }
+            return mocks
+        }
+
+        if (!(ctx.data instanceof Array)) {
+            return [ctx.data, `is not tuple`, type]
+        }
+
+        for (let i = 0; i < type.length; ++ i) {
+            ctx.validate(ctx.data[i], type[i])
+        }
+    }
+}
+
 function eq (val): Type {
     return function (ctx) {
         if (ctx.root.isMock)
@@ -399,6 +419,8 @@ export default {
 
     str,
     string: str,
+
+    tuple,
 
     // logic
     Infinity,

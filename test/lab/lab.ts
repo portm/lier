@@ -66,3 +66,5 @@ console.log(lier.stringify(lier.deduction([
 //     }
 // ], base)))
 console.timeEnd('parse')
+
+console.log(lier.validatex([1, 1], `[1, uint]`))

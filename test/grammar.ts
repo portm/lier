@@ -617,6 +617,21 @@ export = (it) => {
     `,
     [ { path: [], message: [ 'property should be void' ] } ])
 
+    test('tuple',
+        [{ a: 10 }, { b: 10 }],
+        `[{ a: int }, { b: uint }]`,
+    )
+    test('tuple err',
+        [{ a: 10 }, { b: -10 }],
+        `[{ a: int }, { b: uint }]`,
+        [ { path: [ 'b' ], message: [ '-10', 'is out of range of', 'uint32' ] } ]
+    )
+    test('tuple err 1',
+        1,
+        `[{ a: int }, { b: uint }]`,
+        [ { path: [], message: [ 1, 'is not tuple', [ {}, {} ] ] } ]
+    )
+
     test('self type',
     {
         a: 1,

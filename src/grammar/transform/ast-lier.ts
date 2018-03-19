@@ -437,7 +437,7 @@ const table: Table = {
         for (const item of node.value) {
             ret.push(table.router(item, context))
         }
-        return ret
+        return types.tuple(ret)
     },
     [Type.identifier]: (node, context) => {
         return node.value
