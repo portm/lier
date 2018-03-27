@@ -217,61 +217,65 @@ export const visitor: Visitor = {
         const object: any = {
             type: 'object',
         }
-        for (const property of node.properties) {
-            const key = property.key.value
-            if (key === '$definitions') {
-                object.definitions = {}
-                let value = property.value
-                if (value.type === Type.type) {
-                    value = value.value
-                }
-                if (value.type === Type.object) {
-                    for (const prop of value.properties) {
-                        object.definitions[prop.key.value] = this.router(prop.value, context)
+        if (node.properties.length) {
+            for (const property of node.properties) {
+                const key = property.key.value
+                if (key === '$definitions') {
+                    object.definitions = {}
+                    let value = property.value
+                    if (value.type === Type.type) {
+                        value = value.value
                     }
-                } else {
-                    object.definitions = this.router(value, context)
-                }
-                continue
-            }
-            const value = this.router(property.value, context)
-            if (value === null) {
-                continue
-            }
-            if (key === '$export') {
-                delete object.type
-                _.assign(object, value)
-                continue
-            }
-            if (property.key.type === Type.string || property.key.type === Type.number) {
-                if (!object.properties) {
-                    object.properties = {}
-                }
-                object.properties[key] = value
-                setDecorator(property.decorators, object.properties[key])
-            } else if (property.key.type === Type.identifier) {
-                if (key === '$rest') {
-                    object.additionalProperties = value
+                    if (value.type === Type.object) {
+                        for (const prop of value.properties) {
+                            object.definitions[prop.key.value] = this.router(prop.value, context)
+                        }
+                    } else {
+                        object.definitions = this.router(value, context)
+                    }
                     continue
                 }
-                if (!object.properties) {
-                    object.properties = {}
+                const value = this.router(property.value, context)
+                if (value === null) {
+                    continue
                 }
-                object.properties[key] = value
-                setDecorator(property.decorators, object.properties[key])
-            } else if (property.key.type === Type.regular) {
-                if (!object.patternProperties) {
-                    object.patternProperties = {}
+                if (key === '$export') {
+                    delete object.type
+                    _.assign(object, value)
+                    continue
                 }
-                object.patternProperties[key.source] = value
-                setDecorator(property.decorators, object.patternProperties[key.source])
+                if (property.key.type === Type.string || property.key.type === Type.number) {
+                    if (!object.properties) {
+                        object.properties = {}
+                    }
+                    object.properties[key] = value
+                    setDecorator(property.decorators, object.properties[key])
+                } else if (property.key.type === Type.identifier) {
+                    if (key === '$rest') {
+                        object.additionalProperties = value
+                        continue
+                    }
+                    if (!object.properties) {
+                        object.properties = {}
+                    }
+                    object.properties[key] = value
+                    setDecorator(property.decorators, object.properties[key])
+                } else if (property.key.type === Type.regular) {
+                    if (!object.patternProperties) {
+                        object.patternProperties = {}
+                    }
+                    object.patternProperties[key.source] = value
+                    setDecorator(property.decorators, object.patternProperties[key.source])
+                }
+                if (!property.optional && property.key.type !== Type.regular) {
+                    if (!object.required) {
+                        object.required = []
+                    }
+                    object.required.push(key)
+                }
             }
-            if (!property.optional && property.key.type !== Type.regular) {
-                if (!object.required) {
-                    object.required = []
-                }
-                object.required.push(key)
-            }
+        } else {
+            object.properties = {}
         }
         return object
     },
