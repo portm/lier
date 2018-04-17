@@ -105,13 +105,39 @@ function tuple (type): Type {
         }
 
         for (let i = 0; i < type.length; ++ i) {
+            if (type[i]['___rest']) {
+                ctx.validate(ctx.data.slice(i), type[i])
+                break
+            }
             ctx.validate(ctx.data[i], type[i])
         }
     }
 }
 
+function rest (type): Type {
+    const fn = function (ctx: Context) {
+        if (ctx.root.isMock) {
+            const mocks = []
+            for (const item of type) {
+                mocks.push(ctx.mock(item))
+            }
+            return mocks
+        }
+
+        if (!(ctx.data instanceof Array)) {
+            return [ctx.data, `is not rest`, type]
+        }
+
+        for (let i = 0; i < ctx.data.length; ++ i) {
+            ctx.validate(ctx.data[i], type)
+        }
+    }
+    fn['___rest'] = true
+    return fn
+}
+
 function eq (val): Type {
-    return function (ctx) {
+    return function (ctx: Context) {
         if (ctx.root.isMock)
             return val
 
@@ -136,7 +162,7 @@ function Enum (...values): Type {
 }
 
 function optional (type): Type {
-    return function (ctx) {
+    return function (ctx: Context) {
         if (ctx.root.isMock)
             return ctx.mock(type)
 
@@ -152,7 +178,7 @@ function mock (...args): Type {
     if (mocks.length === 0)
         throw new TypeError('at least one mock should be specified')
 
-    return function (ctx) {
+    return function (ctx: Context) {
         if (ctx.root.isMock)
             return mocks[_.random(0, mocks.length - 1)]
 
@@ -180,7 +206,7 @@ function mockKey (...args): Type {
 }
 
 function allOf (...types): Type {
-    return function (ctx) {
+    return function (ctx: Context) {
         if (ctx.root.isMock)
             throw new TypeError('"allOf" must be used with "mock" type')
 
@@ -191,7 +217,7 @@ function allOf (...types): Type {
 }
 
 function oneOf (...types): Type {
-    return (ctx) => {
+    return (ctx: Context) => {
         if (ctx.root.isMock)
             throw new TypeError('"oneOf" must be used with "mock" type')
 
@@ -219,7 +245,7 @@ function oneOf (...types): Type {
 }
 
 function anyOf (...types): Type {
-    return function (ctx) {
+    return function (ctx: Context) {
         if (ctx.root.isMock)
             return ctx.mock(types[_.random(0, types.length - 1)])
 
@@ -308,8 +334,23 @@ function self (fn:  (self: any) => any): Type {
     }
 }
 
+function definition (paths: string[]): Type {
+    return function fn (ctx: Context) {
+        const type = _.get(ctx.root.declares, paths)
+        if (ctx.root.isMock) {
+            return ctx.mock(type)
+        }
+
+        if (!type) {
+            ctx.root.errors.push(new LierError(ctx.path, ['property should be void']))
+            return
+        }
+        ctx.validate(ctx.data, type)
+    }
+}
+
 function match (fn: (self: any) => any, cases: Array<{ cond: any, type: any }>): Type {
-    return (ctx) => {
+    return (ctx: Context) => {
         if (ctx.root.isMock)
             throw new TypeError('"match" must be used with "mock" type')
 
@@ -331,7 +372,7 @@ function match (fn: (self: any) => any, cases: Array<{ cond: any, type: any }>):
 }
 
 function description (desc: string, type): Type {
-    const fn: Type = (ctx) => {
+    const fn: Type = (ctx: Context) => {
         if (ctx.root.isMock)
             return ctx.mock(type)
 
@@ -356,7 +397,7 @@ function range (...args): Type {
     } else {
         throw TypeError('arguments of range should not be empty')
     }
-    const fn: Type = (ctx) => {
+    const fn: Type = (ctx: Context) => {
         if (ctx.root.isMock)
             throw new TypeError('"range" must be used with "mock" type')
 
@@ -445,4 +486,6 @@ export default {
     description,
     range,
     _: description,
+    definition,
+    rest,
 }

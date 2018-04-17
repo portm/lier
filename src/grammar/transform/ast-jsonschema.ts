@@ -363,7 +363,7 @@ export const visitor: Visitor = {
         const value = this.router(node.value, context)
         return value
     },
-    [Type.spread]: function (node, context) {
+    [Type.rest]: function (node, context) {
         return {}
     },
     [Type.optional]: function (node, context) {

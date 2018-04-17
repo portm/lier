@@ -4,8 +4,8 @@ import mock from './mock'
 import types from './types'
 import validate from './validate'
 
-function assert (data, type) {
-    const errs = validate(data, type)
+function assert (data, type, declares?) {
+    const errs = validate(data, type, declares)
 
     if (errs) {
         throw new Error(JSON.stringify(errs))
@@ -13,11 +13,13 @@ function assert (data, type) {
 }
 
 function assertx (data, lang) {
-    return assert(data, compile(parse(lang)))
+    const tree = compile(parse(lang))
+    return assert(data, tree.assignment, tree.declares)
 }
 
 function validatex (data, lang) {
-    return validate(data, compile(parse(lang)))
+    const tree = compile(parse(lang))
+    return validate(data, tree.assignment, tree.declares)
 }
 
 function mockx (lang) {

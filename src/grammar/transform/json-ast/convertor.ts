@@ -54,23 +54,17 @@ const convertor: Convertor = {
             return null
         }
         return {
-            type: Type.type,
-            value: {
-                type: lier.Type.null,
-            } as lier.IdentifierNode,
-        } as lier.TypeNode
+            type: lier.Type.null,
+        } as lier.NullNode
     },
     string: (context: Context): lier.Node => {
         if (assertContext(context, 'String')) {
             return null
         }
         return {
-            type: Type.type,
-            value: {
-                type: Type.identifier,
-                value: 'str',
-            } as lier.IdentifierNode,
-        } as lier.TypeNode
+            type: Type.identifier,
+            value: 'str',
+        } as lier.IdentifierNode
     },
     number: (context: Context): lier.Node => {
         const value = context.data
@@ -82,24 +76,18 @@ const convertor: Convertor = {
             }
         }
         return {
-            type: Type.type,
-            value: {
-                type: Type.identifier,
-                value: integer ? 'int' : 'number',
-            } as lier.IdentifierNode,
-        } as lier.TypeNode
+            type: Type.identifier,
+            value: integer ? 'int' : 'number',
+        } as lier.IdentifierNode
     },
     boolean: (context: Context): lier.Node => {
         if (assertContext(context, 'Boolean')) {
             return null
         }
         return {
-            type: Type.type,
-            value: {
-                type: Type.identifier,
-                value: 'bool',
-            } as lier.IdentifierNode,
-        } as lier.TypeNode
+            type: Type.identifier,
+            value: 'bool',
+        } as lier.IdentifierNode
     },
     array: (context: Context): lier.Node => {
         const array = context.data
@@ -158,13 +146,13 @@ const convertor: Convertor = {
         }
         if (!types.length) {
             return {
-                type: Type.array,
+                type: Type.tuple,
                 value: [],
-            } as lier.ArrayNode
+            } as lier.TupleNode
         }
         return {
-            type: Type.member,
-            object: types.reduce((result, element) => {
+            type: Type.array,
+            value: types.reduce((result, element) => {
                 return {
                     type: Type.binary,
                     left: result,
@@ -172,8 +160,7 @@ const convertor: Convertor = {
                     operator: '|',
                 } as lier.BinaryNode
             }, types.shift()),
-            property: [],
-        } as lier.MemberNode
+        } as lier.ArrayNode
     },
     object: (context: Context): lier.Node => {
         const object = context.data

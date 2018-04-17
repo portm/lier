@@ -30,8 +30,6 @@ function mockObject (type, data, path: Path, root: Root) {
                     walk(currType, data, path.concat(currType.keyMock), root)
                 else
                     throw new TypeError('$rest should mock with keyMock')
-            } else if (k === controlKeys.definitions) {
-                // we don't have to handle definitions
             } else {
                 throw new TypeError('unknown control key')
             }
@@ -71,10 +69,6 @@ function walk (type, data, path: Path, root: Root) {
         if (nodes.has(type)) {
             // when cycle is detected
             data[key] = nodes.get(type)
-        } else if (type.hasOwnProperty(controlKeys.export)) {
-            const exportType = type[controlKeys.export]
-            const value = walk(exportType, data, path.concat(controlKeys.export), root)
-            data[key] = value
         } else {
             data[key] = node
 
@@ -94,10 +88,16 @@ function walk (type, data, path: Path, root: Root) {
     return data[key]
 }
 
-export default (type) => {
-    const root = new Root({}, type, true, new Map)
+export default (type, declares = {}) => {
+    const root = new Root({
+        data: {},
+        type,
+        isMock: true,
+        nodes: new Map,
+        declares,
+    })
     const data = walk(type, root, [], root)
-    const errs = validate(data, type)
+    const errs = validate(data, type, declares)
     if (errs)
         throw new TypeError(JSON.stringify(errs, null, 4))
     else

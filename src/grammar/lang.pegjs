@@ -1,6 +1,11 @@
 //Lier Grammar
 //[1] https://github.com/pegjs/pegjs/blob/master/examples/javascript.pegjs
 
+// array
+// element
+// cases
+// enum
+// object
 {
   var types = {
     unary: 1,
@@ -23,14 +28,14 @@
     regular: 18,
     type: 19,
     case: 20,
-    spread: 21,
-    optional: 22
+    rest: 21,
+    optional: 22,
+    element: 23,
+    comment: 24,
+    whitespace: 25,
+    tuple: 26,
+    declare: 27,
   };
-  
-  function filledArray(count, value) {
-    return Array.apply(null, new Array(count))
-      .map(function() { return value; });
-  }
   
   function buildBinaryExpression(head, tail, operator, right) {
     return tail.reduce(function(result, element) {
@@ -62,10 +67,53 @@
   function extractExpression(list) {
     return list[list.length - 1];
   }
+
+  function concat(left, right) {
+    return Array.prototype.concat.apply(left, right)
+  }
 }
 
 Program
-  = __ program:AssignmentExpression? __ { return program; }
+  = s1:__ program:SourceElements? s2:__ {
+    if (program) {
+      s1.push(program)
+    }
+    return s1.concat(s2)
+  }
+
+SourceElements
+  = declares:(
+    type:TypeDeclaration
+    s1:__ {
+      s1.unshift(type);
+      return s1;
+    }
+  )* assign:Expression {
+    return {
+      type: types.element,
+      declarations: concat([], declares),
+      assignment: assign,
+    };
+  }
+
+TypeDeclaration
+  = TypeToken
+    ___
+    head:Identifier
+    tail:(
+      ___
+      "."
+      ___
+      Identifier
+    )*
+    ___
+    value:PrimaryExpression {
+    return {
+      type: types.declare,
+      path: buildList(head, tail, 3),
+      value: value,
+    };
+  }
 
 SourceCharacter
   = .
@@ -113,7 +161,24 @@ Nd = [\u0030-\u0039\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u
 Pc = [\u005F\u203F-\u2040\u2054\uFE33-\uFE34\uFE4D-\uFE4F\uFF3F]
 
 __
-  = (WhiteSpace / LineTerminatorSequence / Comment)*
+  = body:(
+    WhiteSpace {
+      return { type: types.whitespace, value: text() };
+    }
+    /
+    LineTerminatorSequence {
+      return { type: types.whitespace, value: text() };
+    }
+    /
+    comment:Comment {
+      return { type: types.comment, value: comment };
+    }
+  )* {
+    return body.filter(function (item) { return item.type === types.comment });
+  }
+
+___
+  = (WhiteSpace / LineTerminatorSequence)*
   
 LineTerminatorSequence "end of line"
   = "\n"
@@ -128,16 +193,22 @@ Comment "comment"
   / SharpComment
   
 MultiLineComment
-  = "/*" (!"*/" SourceCharacter)* "*/"
+  = "/*" body:(!"*/" SourceCharacter)* "*/" {
+    return extractList(body, 1).join('');
+  }
   
 SingleLineComment
-  = "//" (!LineTerminator SourceCharacter)*
+  = "//" body:(!LineTerminator SourceCharacter)* {
+    return extractList(body, 1).join('');
+  }
   
 LineTerminator
   = [\n\r\u2028\u2029]
   
 SharpComment
-  = "#" (!LineTerminator SourceCharacter)*
+  = "#" body:(!LineTerminator SourceCharacter)* {
+    return extractList(body, 1).join('');
+  }
 
 Keyword
   = ThisToken
@@ -161,10 +232,10 @@ BlackList
   / "window"
 
 IdentifierName
-  = head:IdentifierStart tail:IdentifierPart* { return { type: types.identifier, value: head + tail.join("") }; }
+  = IdentifierStart IdentifierPart* { return text(); }
 
 KeyIdentifierName
-  = head:IdentifierStart tail:KeyIdentifierPart* { return { type: types.identifier, value: head + tail.join("") }; }
+  = IdentifierStart KeyIdentifierPart* { return text(); }
 
 KeyIdentifierPart
   = IdentifierPart
@@ -224,6 +295,7 @@ SelfToken       = "self"       !IdentifierPart
 EnumToken       = "enum"       !IdentifierPart
 MatchToken      = "match"      !IdentifierPart
 CaseToken       = "case"       !IdentifierPart
+TypeToken       = "type"       !IdentifierPart
 
 Literal
   = NullLiteral
@@ -397,94 +469,196 @@ RegularExpressionClassChar
   / RegularExpressionBackslashSequence
   
 ArrayLiteral
-  = "[" __ elision:(Elision __)? "]" {
-      return { type: types.array, value: optionalList(extractOptional(elision, 0)) };
-    }
-  / "[" __ elements:ElementList __ "]" {
-      return { type: types.array, value: elements };
-    }
-  / "[" __ elements:ElementList __ "," __ elision:(Elision __)? "]" {
-      return { type: types.array, value: elements.concat(optionalList(extractOptional(elision, 0))) };
+  = "["
+    s1:__ elision:(Elision __)?
+    elements:(
+      ElementList
+      /
+      ElementRest
+    )?
+    s2:__
+    "]" {
+      if (elision) {
+        s1 = concat(s1, elision);
+      }
+      if (elements) {
+        s1 = s1.concat(elements);
+      }
+      s1 = s1.concat(s2);
+      return {
+        type: types.tuple,
+        value: s1,
+      };
     }
     
 Elision
-  = "," commas:(__ ",")* {
-      return filledArray(commas.length + 1, undefined);
+  = s1:__ "," !(__ "...") commas:(
+      s11:__ "," !(__ "...") {
+        s11.push({ type: types.null })
+        return s11;
+      }
+    )* {
+      s1.push({ type: types.null });
+      return concat(s1, commas);
     }
   
 ElementList
-  = head:(
-      elision:(Elision __)? element:Element {
-        return optionalList(extractOptional(elision, 0)).concat(element);
-      }
-    )
+  = head:Expression
     tail:(
-      __ "," __ elision:(Elision __)? element:Element {
-        return optionalList(extractOptional(elision, 0)).concat(element);
+      optionals:ElementOptional rest:ElementRestNext? {
+          return {
+            optional: true,
+            elements: rest ? optionals.concat(rest) : optionals,
+          };
+        }
+      /
+      elements:Element*
+      tail:(
+        optionals:ElementOptional rest:ElementRestNext? {
+          return {
+            optional: true,
+            elements: rest ? optionals.concat(rest) : optionals,
+          };
+        }
+        /
+        elision:Elision? rest:ElementRestNext? {
+          elision = optionalList(elision);
+          if (rest) {
+            elision = elision.concat(rest);
+          } else {
+            elision.pop();
+          }
+          return {
+            optional: false,
+            elements: elision,
+          };
+        }
+      ) {
+        if (tail.optional) {
+          var last = elements.length - 1;
+          var subLast = elements[last].length - 1;
+          elements[last][subLast] = { type: types.optional, value: elements[last][subLast] };
+        }
+        elements.push(tail.elements);
+        return {
+          optional: false,
+          elements: elements,
+        };
       }
-    )*
-    { return Array.prototype.concat.apply(head, tail); }
-  
-Element
-  = "..." __ tail:AssignmentExpression {
-      return { type: types.spread, value: tail }
-    }
-  / tail:AssignmentExpression optional:(__ "?")? {
-      return optional ? { type: types.optional, value: tail } : tail
+    ) {
+      if (tail.optional) {
+        head = { type: types.optional, value: head }
+      }
+      return concat([head], tail.elements);
     }
 
-AssignmentExpression
-  = LogicalORExpression
-  
-Expression
-  = head:AssignmentExpression tail:(__ "," __ AssignmentExpression)* {
-      return buildList(head, tail, 3);
+Element
+  = s1:__ "," s2:__ elision:(Elision __)? element:Expression {
+    s1 = s1.concat(s2);
+    if (elision) {
+      s1 = concat(s1, elision);
     }
-  
-MemberExpression
-  = head:(
-      type:PrimaryExpression {
-        if (type instanceof Array) {
-          return type;
-        }
-        return { type: types.type, value: type };
+    s1.push(element);
+    return s1;
+  }
+
+ElementOptional
+  = s1:__ "?" optionals:(
+      s2:__ "," s3:__ element:Expression s4:__ "?" {
+        return s2.concat(s3, { type: types.optional, value: element }, s4);
       }
-    )
-    tail:(
-        __ args:Arguments {
-          return { args: args };
-        }
-      / __ "[" __ property:(Expression __)? "]" {
-          return { property: optionalList(extractOptional(property, 0)) };
-        }
-      / __ "." __ property:IdentifierName {
-          return { property: property };
-        }
     )*
     {
-      return tail.reduce(function(result, element) {
+      return concat(s1, optionals);
+    }
+
+ElementRestNext
+  = s1:__ "," rest:ElementRest {
+    return s1.concat(rest);
+  }
+
+ElementRest
+  = s2:__ "..." s3:__ element:Expression {
+      return s2.concat(s3, { type: types.rest, value: element });
+    }
+
+Expression
+  = LogicalORExpression
+  
+MemberExpression
+  = head:PrimaryExpression
+    tail:(
+      ___
+      node:(
+        args:Arguments {
+          return {
+            args: args,
+          };
+        }
+      / "[" ___ property:Expression ___ "]" {
+          return {
+            property: property,
+          };
+        }
+      / "." ___ property:IdentifierName {
+          return {
+            property: {
+              type: types.identifier,
+              value: property,
+            },
+          };
+        }
+      ) {
+        return node;
+      }
+    )*
+    array:(
+      ___
+      "[" ___ "]"
+    )*
+    {
+      tail = tail.reduce(function(result, element) {
         if (element.hasOwnProperty('args')) {
           return {
             type: types.call,
             callee: result,
-            arguments: element.args
+            arguments: element.args,
           };
+        }
+        if (result.type === types.member) {
+          result.properties.push(element.property);
+          return result;
         }
         return {
           type: types.member,
           object: result,
-          property: element.property
+          properties: [element.property],
         };
       }, head);
+      return array.reduce(function(result, element) {
+        return {
+          type: types.array,
+          value: result,
+        };
+      }, tail);
     }
 
 Arguments
-  = "(" __ args:(Expression __)? ")" {
-      return optionalList(extractOptional(args, 0));
+  = "(" ___ args:(
+      head:Expression
+      tail:(
+        ___ "," ___ Expression
+      )*
+      ___
+      {
+        return buildList(head, tail, 3)
+      }
+    )? ")" {
+      return optionalList(args);
     }
     
 PrimaryExpression
-  = Identifier
+  = id:Identifier { return { type: types.type, value: id }; }
   / ThisToken { return { type: types.this }; }
   / SelfToken { return { type: types.self }; }
   / Literal
@@ -492,57 +666,78 @@ PrimaryExpression
   / EnumLiteral
   / MatchLiteral
   / ObjectLiteral
-  / "(" __ expression:Expression __ ")" { return expression; }
+  / "(" ___ expression:Expression ___ ")" {
+    return expression;
+  }
   
 MatchLiteral
-  = MatchToken __
-    head:AssignmentExpression __
-    "{" __
-    tail:(CaseLiteral __)*
+  = MatchToken ___
+    head:Expression ___
+    "{"
+    s1:__
+    tail:(cs:CaseLiteral s2:__ { return [cs].concat(s2) })*
     "}"
     {
       return {
         test: head,
         type: types.match,
-        cases: optionalList(extractList(tail, 0))
+        cases: concat(s1, tail),
       };
     }
 
 CaseLiteral
-  = CaseToken __
-    head:AssignmentExpression __
-    DeductionOperator __
-    tail:AssignmentExpression
+  = CaseToken ___
+    head:Expression ___
+    DeductionOperator ___
+    tail:Expression
     {
       return { type: types.case, test: head, value: tail };
     }
 
 EnumLiteral
-  = EnumToken __ "{" __ args:(Expression __)? "}" {
+  = EnumToken
+    ___
+    "{"
+    s1:__
+    head:Expression tail:(
+      s2:__ "," s3:__ arg:Expression {
+        return s2.concat(s3, arg);
+      }
+    )*
+    s4:__
+    "}"
+    {
+      s1.push(head);
       return {
         type: types.enum,
-        arguments: optionalList(extractOptional(args, 0))
+        arguments: concat(s1, tail).concat(s4),
       };
     }
   
 ObjectLiteral
-  = "{" __ properties:(PropertyNameAndValueList __)? "}" {
+  = "{" s1:__ properties:(PropertyNameAndValueList __)? "}" {
       return {
         type: types.object,
-        properties: optionalList(extractOptional(properties, 0))
+        properties: concat(s1, optionalList(properties)),
       };
     }
   
 PropertyNameAndValueList
-  = head:PropertyAssignment tail:(__ PropertyAssignment)* {
-      return buildList(head, tail, 1);
+  = head:PropertyAssignment
+    tail:(
+      s1:__ prop:PropertyAssignment {
+        s1.push(prop);
+        return s1;
+      }
+    )* {
+      return concat([head], tail);
     }
   
 PropertyAssignment
-  = decorators:(DecoratorList __)?
-    key:PropertyName __
-    optional:"?"? __ ":" __
-    value:AssignmentExpression {
+  = decorators:(DecoratorList ___)?
+    key:PropertyName ___
+    optional:"?"? ___ ":" ___
+    value:Expression {
       return {
         type: types.property,
         decorators : optionalList(extractOptional(decorators, 0)),
@@ -553,28 +748,28 @@ PropertyAssignment
     }
   
 DecoratorList
-  = head:Decorator tail:(__ Decorator)* {
+  = head:Decorator tail:(___ Decorator)* {
       return buildList(head, tail, 1);
     }
   
 Decorator
   = "@"
-    head:Identifier __
-    tail:(
-    	"(" __ args:(Expression __)? ")" {
-        	return extractOptional(args, 0);
-        }
-    )?
+    name:Identifier ___ args:Arguments?
     {
       return {
         type: types.decorator,
-        name : head.value,
-        arguments : optionalList(tail)
+        name : name,
+        arguments : optionalList(args),
       };
     }
 
 PropertyName
-  = KeyIdentifierName
+  = key:KeyIdentifierName {
+    return {
+      type: types.identifier,
+      value: key,
+    };
+  }
   / string:StringLiteral {
       string.value = string.value.replace(/^(\$+)/, '$1$1')
       return string;
@@ -584,56 +779,56 @@ PropertyName
   
 LogicalORExpression
   = head:LogicalANDExpression
-    tail:(__ LogicalOROperator __ LogicalANDExpression)*
+    tail:(___ LogicalOROperator ___ LogicalANDExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
 
 LogicalANDExpression
   = head:BitwiseORExpression
-    tail:(__ LogicalANDOperator __ BitwiseORExpression)*
+    tail:(___ LogicalANDOperator ___ BitwiseORExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 BitwiseORExpression
   = head:BitwiseXORExpression
-    tail:(__ BitwiseOROperator __ BitwiseXORExpression)*
+    tail:(___ BitwiseOROperator ___ BitwiseXORExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 BitwiseXORExpression
   = head:BitwiseANDExpression
-    tail:(__ BitwiseXOROperator __ BitwiseANDExpression)*
+    tail:(___ BitwiseXOROperator ___ BitwiseANDExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 BitwiseANDExpression
   = head:EqualityExpression
-    tail:(__ BitwiseANDOperator __ EqualityExpression)*
+    tail:(___ BitwiseANDOperator ___ EqualityExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 EqualityExpression
   = head:RelationalExpression
-    tail:(__ EqualityOperator __ RelationalExpression)*
+    tail:(___ EqualityOperator ___ RelationalExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 RelationalExpression
   = head:ShiftExpression
-    tail:(__ RelationalOperator __ ShiftExpression)*
+    tail:(___ RelationalOperator ___ ShiftExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 ShiftExpression
   = head:AdditiveExpression
-    tail:(__ ShiftOperator __ AdditiveExpression)*
+    tail:(___ ShiftOperator ___ AdditiveExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 AdditiveExpression
   = head:MultiplicativeExpression
-    tail:(__ AdditiveOperator __ MultiplicativeExpression)*
+    tail:(___ AdditiveOperator ___ MultiplicativeExpression)*
     { return buildBinaryExpression(head, tail, 1, 3); }
   
 MultiplicativeExpression
   = head:UnaryExpression
-    tail:(__ !RegularExpressionLiteral MultiplicativeOperator __ UnaryExpression)*
+    tail:(___ !RegularExpressionLiteral MultiplicativeOperator ___ UnaryExpression)*
     { return buildBinaryExpression(head, tail, 2, 4); }
   
 UnaryExpression
-  = operator:UnaryOperator __ argument:AssignmentExpression {
+  = operator:UnaryOperator ___ argument:Expression {
       return {
         type: types.unary,
         operator: operator,

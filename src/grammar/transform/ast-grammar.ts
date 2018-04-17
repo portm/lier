@@ -197,7 +197,7 @@ const table: Table = {
         const value = table.router(node.value, context, indent)
         return value
     },
-    [Type.spread]: (node, context, indent) => {
+    [Type.rest]: (node, context, indent) => {
         return `...${table.router(node.value, context, indent)}`
     },
     [Type.optional]: (node, context, indent) => {

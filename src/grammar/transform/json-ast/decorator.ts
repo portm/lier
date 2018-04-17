@@ -65,10 +65,9 @@ const decorator: Decorator = {
         }
         if (context.prev.type !== node.type) {
             context.prev = {
-                type: Type.member,
-                object: context.prev,
-                property: [],
-            } as lier.MemberNode
+                type: Type.array,
+                value: context.prev,
+            } as lier.ArrayNode
         }
         decorator.router(node.property, {
             prev: context.prev.property,
@@ -176,7 +175,7 @@ const decorator: Decorator = {
             prev: context.prev.value,
         })
     },
-    [Type.spread]: (node, context) => {
+    [Type.rest]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }

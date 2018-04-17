@@ -5,7 +5,7 @@
 import { controlKeys, LierError, Path, Root } from './interfaces'
 import _ from './utils'
 
-declare let Set
+declare let Set, Map
 
 function validate (data, type, path: Path = this.path, root: Root = this.root) {
     walk(data, type, path, root)
@@ -43,9 +43,7 @@ function validateArray (data, type, path: Path, root: Root) {
 }
 
 function validateObject (data, type, path: Path, root: Root) {
-    if (type.hasOwnProperty(controlKeys.export)) {
-        walk(data, type[controlKeys.export], path.concat(controlKeys.export), root)
-    } else if (_.isObjectLike(data)) {
+    if (_.isObjectLike(data)) {
         const matchedKeys = new Set
         let restType
 
@@ -54,8 +52,6 @@ function validateObject (data, type, path: Path, root: Root) {
             if (_.isControlKey(k)) {
                 if (k === controlKeys.rest) {
                     restType = currType
-                } else if (k === controlKeys.definitions) {
-                    // we don't have to handle definitions
                 } else {
                     throw new TypeError('unknown control key')
                 }
@@ -123,8 +119,14 @@ function walk (data, type, path: Path, root: Root) {
     }
 }
 
-export default function (data, type): LierError[] | void {
-    const root = new Root(data, type)
+export default function (data, type, declares = {}): LierError[] | void {
+    const root = new Root({
+        data,
+        type,
+        isMock: false,
+        nodes: new Set,
+        declares,
+    })
 
     walk(data, type, [], root)
 

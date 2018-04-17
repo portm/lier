@@ -102,21 +102,15 @@ const convertKey = (key): any => {
 
 const convertNull = (data) => {
     return {
-        type: Type.type,
-        value: {
-            type: lier.Type.null,
-        } as lier.IdentifierNode,
-    } as lier.TypeNode
+        type: lier.Type.null,
+    } as lier.NullNode
 }
 
 const convertString = (data) => {
     return convertExport(data, {
-        type: Type.type,
-        value: {
-            type: Type.identifier,
-            value: 'str',
-        } as lier.IdentifierNode,
-    } as lier.TypeNode)
+        type: Type.identifier,
+        value: 'str',
+    } as lier.IdentifierNode)
 }
 
 const convertInteger = (data) => {
@@ -125,32 +119,23 @@ const convertInteger = (data) => {
         int64: 'long',
     }
     return convertExport(data, {
-        type: Type.type,
-        value: {
-            type: Type.identifier,
-            value: format[data.format] || 'int',
-        } as lier.IdentifierNode,
-    } as lier.TypeNode)
+        type: Type.identifier,
+        value: format[data.format] || 'int',
+    } as lier.IdentifierNode)
 }
 
 const convertNumber = (data) => {
     return convertExport(data, {
-        type: Type.type,
-        value: {
-            type: Type.identifier,
-            value: 'number',
-        } as lier.IdentifierNode,
-    } as lier.TypeNode)
+        type: Type.identifier,
+        value: 'number',
+    } as lier.IdentifierNode)
 }
 
 const convertBoolean = (data) => {
     return convertExport(data, {
-        type: Type.type,
-        value: {
-            type: Type.identifier,
-            value: 'bool',
-        } as lier.IdentifierNode,
-    } as lier.TypeNode)
+        type: Type.identifier,
+        value: 'bool',
+    } as lier.IdentifierNode)
 }
 
 const convertEnum = (data) => {
@@ -167,15 +152,14 @@ const convertEnum = (data) => {
 const convertArray = (data) => {
     if (!data.items) {
         return {
-            type: Type.array,
+            type: Type.tuple,
             value: [],
-        } as lier.ArrayNode
+        } as lier.TupleNode
     }
     return convertExport(data, {
-        type: Type.member,
-        object: convert(data.items),
-        property: [],
-    } as lier.MemberNode)
+        type: Type.array,
+        value: convert(data.items),
+    } as lier.ArrayNode)
 }
 
 const convertObject = (data) => {
@@ -240,34 +224,31 @@ const convertRef = (data) => {
     const path = data.$ref.split('/')
     path.shift()
     const node = path.reduce((result, element) => {
-        let property
+        let properties = []
         if (isidentifier(element)) {
-            property = {
+            properties.push({
                 type: Type.identifier,
                 value: element === 'definitions' ? '$definitions' : element,
-            } as lier.IdentifierNode
+            } as lier.IdentifierNode)
         } else if (isnumber(element)) {
-            property = [{
+            properties.push({
                 type: Type.number,
                 value: +element,
-            } as lier.NumberNode]
+            } as lier.NumberNode)
         } else {
-            property = [{
+            properties.push({
                 type: Type.string,
                 value: element,
-            } as lier.StringNode]
+            } as lier.StringNode)
         }
         return {
             type: Type.member,
             object: result,
-            property,
+            properties,
         } as lier.MemberNode
     }, {
-        type: Type.type,
-        value: {
-            type: Type.this,
-        } as lier.ThisNode,
-    } as lier.TypeNode)
+        type: Type.this,
+    } as lier.ThisNode)
     return convertExport(data, node)
 }
 
@@ -280,12 +261,9 @@ const convertOneOf = (data) => {
     return convertExport(data, {
         type: Type.call,
         callee: {
-            type: Type.type,
-            value: {
-                type: Type.identifier,
-                value: 'oneOf',
-            } as lier.IdentifierNode,
-        } as lier.TypeNode,
+            type: Type.identifier,
+            value: 'oneOf',
+        } as lier.IdentifierNode,
         arguments: args,
     } as lier.CallNode)
 }
@@ -298,12 +276,9 @@ const convertAnyOf = (data) => {
     }
     if (!args.length) {
         return {
-            type: Type.type,
-            value: {
-                type: Type.identifier,
-                value: 'any',
-            } as lier.IdentifierNode,
-        } as lier.TypeNode
+            type: Type.identifier,
+            value: 'any',
+        } as lier.IdentifierNode
     }
     const top = args.shift()
     const node = args.reduce((result, element) => {
@@ -325,12 +300,9 @@ const convertAllOf = (data) => {
     }
     if (!args.length) {
         return {
-            type: Type.type,
-            value: {
-                type: Type.identifier,
-                value: 'any',
-            } as lier.IdentifierNode,
-        } as lier.TypeNode
+            type: Type.identifier,
+            value: 'any',
+        } as lier.IdentifierNode
     }
     const top = args.shift()
     const node = args.reduce((result, element) => {
@@ -382,90 +354,60 @@ const pushRange = (decorators, value) => {
     if (value.hasOwnProperty('minItems') && value.hasOwnProperty('maxItems')) {
         items = [
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.minItems,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.minItems,
+            } as lier.NumberNode,
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.maxItems,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.maxItems,
+            } as lier.NumberNode,
         ]
     } else if (value.hasOwnProperty('minItems')) {
         items = [
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.minItems,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.minItems,
+            } as lier.NumberNode,
             {
-                type: Type.type,
-                value: {
-                    type: Type.identifier,
-                    value: 'Infinity',
-                } as lier.IdentifierNode,
-            } as lier.TypeNode,
+                type: Type.identifier,
+                value: 'Infinity',
+            } as lier.IdentifierNode,
         ]
     } else if (value.hasOwnProperty('maxItems')) {
         items = [
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.maxItems,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.maxItems,
+            } as lier.NumberNode,
         ]
     } else if (value.hasOwnProperty('minimum') && value.hasOwnProperty('maximum')) {
         items = [
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.minimum,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.minimum,
+            } as lier.NumberNode,
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.maximum,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.maximum,
+            } as lier.NumberNode,
         ]
     } else if (value.hasOwnProperty('minimum')) {
         items = [
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.minimum,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.minimum,
+            } as lier.NumberNode,
             {
-                type: Type.type,
-                value: {
-                    type: Type.identifier,
-                    value: 'Infinity',
-                } as lier.IdentifierNode,
-            } as lier.TypeNode,
+                type: Type.identifier,
+                value: 'Infinity',
+            } as lier.IdentifierNode,
         ]
     } else if (value.hasOwnProperty('maximum')) {
         items = [
             {
-                type: Type.type,
-                value: {
-                    type: Type.number,
-                    value: value.maximum,
-                } as lier.NumberNode,
-            } as lier.TypeNode,
+                type: Type.number,
+                value: value.maximum,
+            } as lier.NumberNode,
         ]
     }
     if (items.length) {
@@ -484,12 +426,9 @@ const pushDescription = (decorators, value) => {
             name: '_',
             arguments: [
                 {
-                    type: Type.type,
-                    value: {
-                        type: Type.string,
-                        value: value.description,
-                    } as lier.StringNode,
-                } as lier.TypeNode,
+                    type: Type.string,
+                    value: value.description,
+                } as lier.StringNode,
             ],
         } as lier.DecoratorNode)
     }
@@ -499,12 +438,9 @@ const pushDescription = (decorators, value) => {
             name: '_',
             arguments: [
                 {
-                    type: Type.type,
-                    value: {
-                        type: Type.string,
-                        value: value.items.description,
-                    } as lier.StringNode,
-                } as lier.TypeNode,
+                    type: Type.string,
+                    value: value.items.description,
+                } as lier.StringNode,
             ],
         } as lier.DecoratorNode)
     }
@@ -519,32 +455,23 @@ const directConvert = (data): any => {
 
     if (type === 'String') {
         return {
-            type: Type.type,
-            value: {
-                type: Type.string,
-                value: data,
-            } as lier.StringNode,
-        } as lier.TypeNode
+            type: Type.string,
+            value: data,
+        } as lier.StringNode
     }
 
     if (type === 'Number') {
         return {
-            type: Type.type,
-            value: {
-                type: Type.number,
-                value: data,
-            } as lier.NumberNode,
-        } as lier.TypeNode
+            type: Type.number,
+            value: data,
+        } as lier.NumberNode
     }
 
     if (type === 'Boolean') {
         return {
-            type: Type.type,
-            value: {
-                type: Type.boolean,
-                value: data,
-            } as lier.BooleanNode,
-        } as lier.TypeNode
+            type: Type.boolean,
+            value: data,
+        } as lier.BooleanNode
     }
 
     if (type === 'Array') {
@@ -564,9 +491,9 @@ const directConvertArray = (data) => {
         items.push(convert(item))
     }
     return {
-        type: Type.array,
+        type: Type.tuple,
         value: items,
-    } as lier.ArrayNode
+    } as lier.TupleNode
 }
 
 const directConvertObject = (data) => {

@@ -1,6 +1,6 @@
 import inspect from './inspect'
 
-declare let Set
+declare let Set, Map
 
 export interface Options {
     banExtra: boolean
@@ -43,18 +43,28 @@ export class LierError {
 
 export type Nodes = any
 
+export interface RootOptions {
+    data: any
+    type: any
+    nodes: Nodes
+    isMock: boolean
+    declares: Nodes
+}
+
 export class Root {
     data: any
     type: any
     nodes: Nodes
     isMock: boolean
+    declares: Nodes
     errors: LierError[]
 
-    constructor (data, type, isMock = false, nodes: Nodes = new Set) {
-        this.data = data
-        this.type = type
-        this.nodes = nodes
-        this.isMock = isMock
+    constructor (options: RootOptions) {
+        this.data = options.data
+        this.type = options.type
+        this.nodes = options.nodes
+        this.isMock = options.isMock
+        this.declares = options.declares
         this.errors = []
     }
 }
@@ -75,6 +85,4 @@ export interface Type {
 
 export const controlKeys = {
     rest: '$rest',
-    definitions: '$definitions',
-    export: '$export',
 }

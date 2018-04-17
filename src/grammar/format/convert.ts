@@ -350,7 +350,7 @@ const table: Table = {
         const value = table.router(node.value, context)
         return value
     },
-    [Type.spread]: (node, context) => {
+    [Type.rest]: (node, context) => {
         const tags = []
         tags.push(renderRange('...', style['...']))
         tags.push(table.router(node.value, context))

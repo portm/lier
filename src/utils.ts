@@ -1,6 +1,7 @@
 import * as _ from 'lodash'
 import * as RandExp from 'randexp'
 
+
 const isKeyPatternReg = /^\/[^\/]/
 const keyPatternReg = /^\/([^\/][\s\S]*)\/([igmuy]*)$/
 const isControlKeyReg = /^\$[^\$]/

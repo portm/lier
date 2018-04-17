@@ -1,8 +1,11 @@
+import * as _ from 'lodash'
 import { types } from '../../'
 import { Node, Type } from '../interface'
 
 class Context {
-    root = null
+    declares: {
+        [name: string]: any
+    } = {}
 }
 
 const PACKING_KEY = '__packing__'
@@ -30,28 +33,24 @@ const isObject = value => {
 }
 
 interface Table {
-    start: (any) => Node
+    start: (any, context: Context) => Node
     router: (any, context: Context) => any
     [x: number]: (node: any, context: Context) => any
 }
 
 const table: Table = {
-    start: node => {
-        const context = new Context()
-        context.root = node
-        return unpacking(table.router(node, context))
+    start: (node, context) => {
+        for (const element of node) {
+            if (element.type !== Type.element) {
+                continue
+            }
+            return table.router(element, context)
+        }
+        return null
     },
     router: (node, context) => {
         if (!node) {
             return node
-        }
-
-        if (node instanceof Array) {
-            const ret = []
-            for (const item of node) {
-                ret.push(table.router(item, context))
-            }
-            return ret.length > 0 ? ret[ret.length - 1] : null
         }
 
         const handler = table[node.type]
@@ -104,54 +103,31 @@ const table: Table = {
         }
     },
     [Type.member]: (node, context) => {
-        let self = node
-        const members = []
-        while (self) {
-            if (self.type === Type.member) {
-                members.unshift(table.router(self.property, context))
-            } else if (self.type === Type.type && (self.value.type === Type.this || self.value.type === Type.self)) {
-                members.unshift(self.value)
-            } else {
-                members.unshift(table.router(self, context))
-            }
-            self = self.object
+        const properties = node.properties.map(property => {
+            return unpacking(table.router(property, context))
+        })
+        const object = node.object
+        if (object.type === Type.this) {
+            return types.ref(properties)
         }
-        let deep = 0
-        while (members[members.length - 1] === null) {
-            deep++
-            members.pop()
-        }
-        if (members[0].type === Type.this) {
-            members.shift()
-            let ret: any = types.ref(members)
-            while (deep--) {
-                ret = [ret]
-            }
-            return ret
-        }
-        if (members[0].type === Type.self) {
-            members.shift()
+        if (object.type === Type.self) {
             return packing(value => {
                 let ret = value
-                let innerDeep = deep
-                for (const item of members) {
+                for (const item of properties) {
                     ret = ret[item]
-                }
-                while (innerDeep--) {
-                    ret = [ret]
                 }
                 return ret
             })
         }
-        let ret = members[0]
-        members.shift()
-        for (const item of members) {
-            ret = ret[item]
+        if (object.type !== Type.type || types.hasOwnProperty(object.value)) {
+            let ret = table.router(object, context)
+            for (const item of properties) {
+                ret = ret[item]
+            }
+            return ret
         }
-        while (deep--) {
-            ret = [ret]
-        }
-        return ret
+        
+        return types.definition([object.value].concat(properties))
     },
     [Type.binary]: (node, context) => {
         const operator = node.operator
@@ -369,7 +345,10 @@ const table: Table = {
     [Type.object]: (node, context) => {
         const ret = {}
         for (const property of node.properties) {
-            const key = table.router(property.key, context)
+            if (property.type !== Type.property) {
+                continue
+            }
+            const key = property.key.type === Type.identifier ? property.key.value : table.router(property.key, context)
             let value = unpacking(table.router(property.value, context))
             for (const decorate of property.decorators) {
                 const decorateFun = types[decorate.name]
@@ -393,17 +372,23 @@ const table: Table = {
     [Type.enum]: (node, context) => {
         const args = []
         for (const item of node.arguments) {
-            args.push(table.router(item, context))
+            if (item.type === Type.comment) {
+                continue
+            }
+            args.push(unpacking(table.router(item, context)))
         }
         return types.enum(...args)
     },
     [Type.match]: (node, context) => {
         const test = table.router(node.test, context)
         const cases = []
-        for (const { test, value } of node.cases) {
+        for (const cs of node.cases) {
+            if (cs.type !== Type.case) {
+                continue
+            }
             cases.push({
-                cond: unpacking(table.router(test, context)),
-                type: unpacking(table.router(value, context)),
+                cond: unpacking(table.router(cs.test, context)),
+                type: unpacking(table.router(cs.value, context)),
             })
         }
         return types.match(test, cases)
@@ -419,7 +404,7 @@ const table: Table = {
                 return packing(self => {
                     if (node.callee.type === Type.member) {
                         const host = table.router(node.callee.object, context)
-                        return callee(self).apply((host instanceof Function) ? host(self) : self, args)
+                        return callee(self).apply(host instanceof Function ? host(self) : self, args)
                     }
                     return callee(self)(...args)
                 })
@@ -432,12 +417,15 @@ const table: Table = {
         }
         throw new Error(callee + ' is not function')
     },
-    [Type.array]: (node, context) => {
-        const ret = []
+    [Type.tuple]: (node, context) => {
+        const tuples = []
         for (const item of node.value) {
-            ret.push(table.router(item, context))
+            if (item.type === Type.comment) {
+                continue
+            }
+            tuples.push(unpacking(table.router(item, context)))
         }
-        return types.tuple(ret)
+        return types.tuple(tuples)
     },
     [Type.identifier]: (node, context) => {
         return node.value
@@ -458,15 +446,13 @@ const table: Table = {
         return node.value
     },
     [Type.type]: (node, context) => {
-        if (node.value.type === Type.identifier) {
-            const value = node.value.value
-            if (!types.hasOwnProperty(value)) {
-                throw new Error('not implemented type:' + value)
-            }
-            return types[value]
+        if (!types.hasOwnProperty(node.value)) {
+            return types.definition([node.value])
         }
-        const value = table.router(node.value, context)
-        return value
+        return types[node.value]
+    },
+    [Type.declare]: (node, context) => {
+        _.set(context.declares, node.path, unpacking(table.router(node.value, context)))
     },
     [Type.this]: (node, context) => {
         return types.ref()
@@ -474,14 +460,34 @@ const table: Table = {
     [Type.self]: (node, context) => {
         return types.self(self => self)
     },
-    [Type.spread]: (node, context) => {
-        return table.router(node.value, context)
+    [Type.rest]: (node, context) => {
+        return types.rest(table.router(node.value, context))
     },
     [Type.optional]: (node, context) => {
-        return table.router(node.value, context)
+        return types.optional(table.router(node.value, context))
+    },
+    [Type.element]: (node, context) => {
+        for (const type of node.declarations) {
+            table.router(type, context)
+        }
+        return unpacking(table.router(node.assignment, context))
+    },
+    [Type.array]: (node, context) => {
+        return [unpacking(table.router(node.value, context))]
     },
 }
 
-export default (ast: Node): any => {
-    return table.start(ast)
+export interface Tree {
+    declares: {
+        [name: string]: any
+    }
+    assignment: any
+}
+
+export default (ast: Node): Tree => {
+    const context = new Context()
+    return {
+        declares: context.declares,
+        assignment: table.start(ast, context),
+    }
 }
