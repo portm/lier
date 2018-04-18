@@ -189,16 +189,10 @@ LineTerminatorSequence "end of line"
   
 Comment "comment"
   = MultiLineComment
-  / SingleLineComment
   / SharpComment
   
 MultiLineComment
   = "/*" body:(!"*/" SourceCharacter)* "*/" {
-    return extractList(body, 1).join('');
-  }
-  
-SingleLineComment
-  = "//" body:(!LineTerminator SourceCharacter)* {
     return extractList(body, 1).join('');
   }
   
