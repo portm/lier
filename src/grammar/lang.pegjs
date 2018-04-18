@@ -224,12 +224,6 @@ ReservedWord
   = Keyword
   / NullLiteral
   / BooleanLiteral
-  / BlackList !IdentifierPart
-
-BlackList
-  = "eval"
-  / "global"
-  / "window"
 
 IdentifierName
   = IdentifierStart IdentifierPart* { return text(); }
