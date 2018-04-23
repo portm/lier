@@ -452,7 +452,7 @@ const table: Table = {
         return types[node.value]
     },
     [Type.declare]: (node, context) => {
-        _.set(context.declares, node.path, unpacking(table.router(node.value, context)))
+        _.set(context.declares, node.path.map(path => path.value), unpacking(table.router(node.value, context)))
     },
     [Type.this]: (node, context) => {
         return types.ref()
@@ -484,7 +484,7 @@ export interface Tree {
     assignment: any
 }
 
-export default (ast: Node): Tree => {
+export default (ast: Node[]): Tree => {
     const context = new Context()
     return {
         declares: context.declares,

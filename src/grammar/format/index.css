@@ -10,6 +10,10 @@
     vertical-align: top;
 }
 
+.lier-container .lier-layout {
+    margin: 9px 0;
+}
+
 .lier-container .lier-range {
     display: inline-block;
 }
@@ -18,7 +22,7 @@
     padding-left: 36px;
 }
 
-.lier-container .lier-match-test, .lier-container .lier-operator {
+.lier-container .lier-match-test, .lier-container .lier-operator, .lier-type-path {
     padding: 0 9px;
 }
 
@@ -82,6 +86,11 @@
     font-weight: bold;
 }
 
+.lier-container .lier-type {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
 .lier-container .lier-self {
     color: #ef943e;
     font-weight: bold;
@@ -124,13 +133,6 @@
 }
 
 .lier-container .lier-comment {
-    color: #aaa;
-}
-
-.lier-container .lier-mock * {
+    color: #6f6f6f;
     opacity: .5
-}
-
-.lier-container .lier-description {
-    color: #aaa;
 }

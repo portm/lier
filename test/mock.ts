@@ -2,7 +2,7 @@ import * as lier from '../src/index'
 
 const {
     int, str, anyOf, allOf, merge,
-    eq, Enum, uint, ref, mock, mockKey,
+    eq, uint, ref, mock, mockKey,
     description,
 } = lier.types
 

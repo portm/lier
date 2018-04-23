@@ -1,62 +1,77 @@
+import * as _ from 'lodash'
 import * as lier from '../interface'
 
 const Type = lier.Type
 
-const convert = (data) => {
+const format = {
+    int32: 'int',
+    int64: 'long',
+}
+
+interface Context {
+    declares: any[]
+    path: string[]
+}
+
+const convert = (data, context: Context) => {
     if (data == null) {
-        return convertNull(data)
+        return convertNull(data, context)
     }
 
     if (data.enum) {
-        return convertEnum(data)
+        return convertEnum(data, context)
     }
     const type = data.type
 
-    if (type === 'string') {
-        return convertString(data)
-    }
-
-    if (type === 'integer') {
-        return convertInteger(data)
-    }
-
-    if (type === 'number') {
-        return convertNumber(data)
-    }
-
-    if (type === 'boolean') {
-        return convertBoolean(data)
-    }
-
-    if (data.type === 'null') {
-        return convertNull(data)
-    }
-
-    if (type === 'array' || data.items) {
-        return convertArray(data)
+    if (data.format) {
+        return convertFormat(data, context)
     }
 
     if (data.$ref) {
-        return convertRef(data)
+        return convertRef(data, context)
     }
 
     if (data.oneOf) {
-        return convertOneOf(data)
+        return convertOneOf(data, context)
     }
 
     if (data.anyOf) {
-        return convertAnyOf(data)
+        return convertAnyOf(data, context)
     }
 
     if (data.allOf) {
-        return convertAllOf(data)
+        return convertAllOf(data, context)
+    }
+
+    if (type === 'string') {
+        return convertString(data, context)
+    }
+
+    if (type === 'integer') {
+        return convertInteger(data, context)
+    }
+
+    if (type === 'number') {
+        return convertNumber(data, context)
+    }
+
+    if (type === 'boolean') {
+        return convertBoolean(data, context)
+    }
+
+    if (data.type === 'null') {
+        return convertNull(data, context)
+    }
+
+    if (type === 'array' || data.items) {
+        return convertArray(data, context)
     }
 
     if (type === 'object' || data.properties || data.hasOwnProperty('definitions')) {
-        return convertObject(data)
+        return convertObject(data, context)
     }
 
-    return directConvert(data)
+    return directConvert(data, context)
 }
 
 const isnumber = (value) => {
@@ -69,6 +84,13 @@ const isidentifier = (value) => {
 
 const getType = (value) => {
     return Object.prototype.toString.call(value).slice(8, -1)
+}
+
+const makeType = (value): lier.TypeNode => {
+    return {
+        type: Type.type,
+        value,
+    }
 }
 
 const convertKey = (key): any => {
@@ -100,69 +122,88 @@ const convertKey = (key): any => {
     } as lier.StringNode
 }
 
-const convertNull = (data) => {
+const convertNull = (data, context: Context) => {
     return {
         type: lier.Type.null,
     } as lier.NullNode
 }
 
-const convertString = (data) => {
-    return convertExport(data, {
-        type: Type.identifier,
-        value: 'str',
-    } as lier.IdentifierNode)
-}
-
-const convertInteger = (data) => {
-    const format = {
-        int32: 'int',
-        int64: 'long',
+const convertFormat = (data, context: Context) => {
+    let type = format[data.format]
+    if (type) {
+        return makeType(type)
     }
-    return convertExport(data, {
-        type: Type.identifier,
-        value: format[data.format] || 'int',
-    } as lier.IdentifierNode)
+    if (data.type === 'string') {
+        return makeType('str')
+    }
+
+    if (data.type === 'integer') {
+        return makeType('int')
+    }
+
+    if (data.type === 'number') {
+        return makeType('number')
+    }
+
+    if (data.type === 'boolean') {
+        return makeType('bool')
+    }
+    return makeType('any')
 }
 
-const convertNumber = (data) => {
-    return convertExport(data, {
-        type: Type.identifier,
-        value: 'number',
-    } as lier.IdentifierNode)
+const convertString = (data, context: Context) => {
+    convertExport(data, context)
+    if (data.pattern) {
+        return {
+            type: Type.regular,
+            value: new RegExp(data.pattern)
+        }
+    }
+    return makeType('str')
 }
 
-const convertBoolean = (data) => {
-    return convertExport(data, {
-        type: Type.identifier,
-        value: 'bool',
-    } as lier.IdentifierNode)
+const convertInteger = (data, context: Context) => {
+    convertExport(data, context)
+    return makeType('int')
 }
 
-const convertEnum = (data) => {
+const convertNumber = (data, context: Context) => {
+    convertExport(data, context)
+    return makeType('number')
+}
+
+const convertBoolean = (data, context: Context) => {
+    convertExport(data, context)
+    return makeType('bool')
+}
+
+const convertEnum = (data, context: Context) => {
     const args = []
     for (const item of data.enum) {
-        args.push(convert(item))
+        args.push(convert(item, context))
     }
-    return convertExport(data, {
+    convertExport(data, context)
+    return {
         type: Type.enum,
         arguments: args,
-    } as lier.EnumNode)
+    } as lier.EnumNode
 }
 
-const convertArray = (data) => {
+const convertArray = (data, context: Context) => {
     if (!data.items) {
         return {
             type: Type.tuple,
             value: [],
         } as lier.TupleNode
     }
-    return convertExport(data, {
+    convertExport(data, context)
+    return {
         type: Type.array,
-        value: convert(data.items),
-    } as lier.ArrayNode)
+        value: convert(data.items, context),
+    } as lier.ArrayNode
 }
 
-const convertObject = (data) => {
+const convertObject = (data, context: Context) => {
     const properties = []
     const object = data.properties
     const required = data.required || []
@@ -170,65 +211,54 @@ const convertObject = (data) => {
         for (const key of Object.keys(object)) {
             const value = object[key]
             const decorators = []
-            if (value) {
-                pushDescription(decorators, value)
-                pushRange(decorators, value)
-            }
+            pushDescription(properties, value)
+            pushRange(decorators, value)
             properties.push({
                 type: Type.property,
                 decorators,
-                optional: data.isDefinitions ? false : required.indexOf(key) === -1,
+                optional: required.indexOf(key) === -1,
                 key: convertKey(key),
-                value: convert(value),
+                value: convert(value, context),
             } as lier.PropertyNode)
         }
     }
-    if (data.hasOwnProperty('definitions')) {
-        properties.push({
-            decorators: [],
-            optional: false,
-            key: {
-                type: Type.identifier,
-                value: '$definitions',
-            },
-            value: convert({
-                properties: data.definitions,
-                isDefinitions: true,
-            }),
-        })
-    }
     if (data.hasOwnProperty('additionalProperties')) {
         properties.push({
+            type: Type.property,
             decorators: [],
             optional: false,
             key: {
                 type: Type.identifier,
                 value: '$rest',
             },
-            value: data.additionalProperties ? convert(data.additionalProperties) : {
-                type: Type.type,
-                value: {
-                    type: Type.identifier,
-                    value: 'never',
-                }
-            },
+            value: data.additionalProperties ? convert(data.additionalProperties, context) : makeType('never'),
         })
     }
+    convertExport(data, context)
     return {
         type: Type.object,
         properties,
     } as lier.ObjectNode
 }
 
-const convertRef = (data) => {
+const convertRef = (data, context: Context) => {
     const path = data.$ref.split('/')
     path.shift()
-    const node = path.reduce((result, element) => {
-        let properties = []
+    convertExport(data, context)
+
+    if (path[0] === 'definitions') {
+        path.shift()
+    }
+    
+    return path.reduce((result, element) => {
+        if (element === 'definitions') {
+            return result
+        }
+        let properties = result.type === Type.member ? result.properties: []
         if (isidentifier(element)) {
             properties.push({
                 type: Type.identifier,
-                value: element === 'definitions' ? '$definitions' : element,
+                value: element,
             } as lier.IdentifierNode)
         } else if (isnumber(element)) {
             properties.push({
@@ -241,47 +271,43 @@ const convertRef = (data) => {
                 value: element,
             } as lier.StringNode)
         }
+        if (result.type === Type.member) {
+            return result
+        }
         return {
             type: Type.member,
             object: result,
             properties,
         } as lier.MemberNode
-    }, {
-        type: Type.this,
-    } as lier.ThisNode)
-    return convertExport(data, node)
+    }, makeType(path.shift()))
 }
 
-const convertOneOf = (data) => {
+const convertOneOf = (data, context: Context) => {
     const object = data.oneOf
     const args = []
     for (const key of Object.keys(object)) {
-        args.push(convert(object[key]))
+        args.push(convert(object[key], context))
     }
-    return convertExport(data, {
+    convertExport(data, context)
+    return {
         type: Type.call,
-        callee: {
-            type: Type.identifier,
-            value: 'oneOf',
-        } as lier.IdentifierNode,
+        callee: makeType('oneOf'),
         arguments: args,
-    } as lier.CallNode)
+    } as lier.CallNode
 }
 
-const convertAnyOf = (data) => {
+const convertAnyOf = (data, context: Context) => {
     const object = data.anyOf
     const args = []
     for (const key of Object.keys(object)) {
-        args.push(convert(object[key]))
+        args.push(convert(object[key], context))
     }
     if (!args.length) {
-        return {
-            type: Type.identifier,
-            value: 'any',
-        } as lier.IdentifierNode
+        return makeType('any')
     }
     const top = args.shift()
-    const node = args.reduce((result, element) => {
+    convertExport(data, context)
+    return args.reduce((result, element) => {
         return {
             type: Type.binary,
             operator: '|',
@@ -289,23 +315,20 @@ const convertAnyOf = (data) => {
             right: element,
         } as lier.BinaryNode
     }, top)
-    return convertExport(data, node)
 }
 
-const convertAllOf = (data) => {
+const convertAllOf = (data, context: Context) => {
     const object = data.allOf
     const args = []
     for (const key of Object.keys(object)) {
-        args.push(convert(object[key]))
+        args.push(convert(object[key], context))
     }
     if (!args.length) {
-        return {
-            type: Type.identifier,
-            value: 'any',
-        } as lier.IdentifierNode
+        return makeType('any')
     }
     const top = args.shift()
-    const node = args.reduce((result, element) => {
+    convertExport(data, context)
+    return args.reduce((result, element) => {
         return {
             type: Type.binary,
             operator: '&',
@@ -313,40 +336,42 @@ const convertAllOf = (data) => {
             right: element,
         } as lier.BinaryNode
     }, top)
-    return convertExport(data, node)
 }
 
-const convertExport = (data, property) => {
+const convertExport = (data, context: Context) => {
     if (!data.hasOwnProperty('definitions')) {
-        return property
+        return
     }
-    return {
-        type: Type.object,
-        properties: [
-            {
-                decorators: [],
-                optional: false,
-                key: {
-                    type: Type.identifier,
-                    value: '$definitions',
-                },
-                value: convert({
-                    properties: data.definitions,
-                    isDefinitions: true,
-                }),
-            },
-            {
-                type: Type.property,
-                decorators: [],
-                optional: false,
-                key: {
-                    type: Type.identifier,
-                    value: '$export',
-                } as lier.Node,
-                value: property,
-            } as lier.PropertyNode
-        ],
-    } as lier.ObjectNode
+    const definitions = data.definitions
+    for (const key of Object.keys(definitions)) {
+        const value = definitions[key]
+        context.path.push(key)
+        const members = context.path.slice()
+        pushDescription(context.declares, value)
+        context.declares.push({
+            type: Type.declare,
+            path: members.map(member => {
+                if (isidentifier(member)) {
+                    return {
+                        type: Type.identifier,
+                        value: member,
+                    } as lier.IdentifierNode
+                } else if (isnumber(member)) {
+                    return {
+                        type: Type.number,
+                        value: +member,
+                    } as lier.NumberNode
+                } else {
+                    return {
+                        type: Type.string,
+                        value: member,
+                    } as lier.StringNode
+                }
+            }),
+            value: convert(value, context),
+        })
+        context.path.pop()
+    }
 }
 
 const pushRange = (decorators, value) => {
@@ -368,10 +393,7 @@ const pushRange = (decorators, value) => {
                 type: Type.number,
                 value: value.minItems,
             } as lier.NumberNode,
-            {
-                type: Type.identifier,
-                value: 'Infinity',
-            } as lier.IdentifierNode,
+            makeType('Infinity')
         ]
     } else if (value.hasOwnProperty('maxItems')) {
         items = [
@@ -397,10 +419,7 @@ const pushRange = (decorators, value) => {
                 type: Type.number,
                 value: value.minimum,
             } as lier.NumberNode,
-            {
-                type: Type.identifier,
-                value: 'Infinity',
-            } as lier.IdentifierNode,
+            makeType('Infinity')
         ]
     } else if (value.hasOwnProperty('maximum')) {
         items = [
@@ -419,36 +438,27 @@ const pushRange = (decorators, value) => {
     }
 }
 
-const pushDescription = (decorators, value) => {
+const pushDescription = (nodes, value) => {
+    if (!value) {
+        return
+    }
     if (value.description) {
-        decorators.push({
-            type: Type.decorator,
-            name: '_',
-            arguments: [
-                {
-                    type: Type.string,
-                    value: value.description,
-                } as lier.StringNode,
-            ],
-        } as lier.DecoratorNode)
+        nodes.push({
+            type: Type.comment,
+            value: value.description,
+        } as lier.CommentNode)
     }
     if (value.items && value.items.description) {
-        decorators.push({
-            type: Type.decorator,
-            name: '_',
-            arguments: [
-                {
-                    type: Type.string,
-                    value: value.items.description,
-                } as lier.StringNode,
-            ],
-        } as lier.DecoratorNode)
+        nodes.push({
+            type: Type.comment,
+            value: value.items.description,
+        } as lier.CommentNode)
     }
 }
 
-const directConvert = (data): any => {
+const directConvert = (data, context: Context): any => {
     if (data == null) {
-        return convertNull(data)
+        return convertNull(data, context)
     }
 
     const type = getType(data)
@@ -475,20 +485,20 @@ const directConvert = (data): any => {
     }
 
     if (type === 'Array') {
-        return directConvertArray(data)
+        return directConvertArray(data, context)
     }
 
     if (type === 'Object') {
-        return directConvertObject(data)
+        return directConvertObject(data, context)
     }
 
-    return convertNull(data)
+    return convertNull(data, context)
 }
 
-const directConvertArray = (data) => {
+const directConvertArray = (data, context: Context) => {
     const items = []
     for (const item of data) {
-        items.push(convert(item))
+        items.push(convert(item, context))
     }
     return {
         type: Type.tuple,
@@ -496,7 +506,7 @@ const directConvertArray = (data) => {
     } as lier.TupleNode
 }
 
-const directConvertObject = (data) => {
+const directConvertObject = (data, context: Context) => {
     const properties = []
     for (const key of Object.keys(data)) {
         properties.push({
@@ -504,7 +514,7 @@ const directConvertObject = (data) => {
             decorators: [],
             optional: false,
             key: convertKey(key),
-            value: convert(data[key]),
+            value: convert(data[key], context),
         } as lier.PropertyNode)
     }
     return {
@@ -513,4 +523,19 @@ const directConvertObject = (data) => {
     } as lier.ObjectNode
 }
 
-export default convert
+export default (data) => {
+    const context = {
+        declares: [],
+        path: [],
+    }
+    const ast = convert(data, context)
+    if (!ast) {
+        return []
+    }
+    pushDescription(context.declares, data)
+    return [{
+        type: Type.element,
+        declarations: context.declares,
+        assignment: ast,
+    }]
+}

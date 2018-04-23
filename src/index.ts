@@ -23,7 +23,8 @@ function validatex (data, lang) {
 }
 
 function mockx (lang) {
-    return mock(compile(parse(lang)))
+    const tree = compile(parse(lang))
+    return mock(tree.assignment, tree.declares)
 }
 
 export {

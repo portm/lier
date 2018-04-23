@@ -48,6 +48,8 @@ const style: FormatStyle = {
     mock: 'mock',
     wrapup: 'wrapup',
     '...': 'spread',
+    type: 'type',
+    typePath: 'typePath',
 }
 
 export default style

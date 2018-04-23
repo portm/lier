@@ -35,6 +35,8 @@ export interface Style {
     self: string
     path: string
     blank: string
+    type: string
+    typePath: string
 }
 
 export interface Stream {

@@ -8,7 +8,7 @@ declare let Promise
 
 const {
     int, uint, str, anyOf, oneOf, not, merge,
-    Enum, allOf, never, tuple, ref, self, mock,
+    allOf, never, tuple, ref, self, mock,
     description, eq, match, range, nil,
 } = lier.types
 
@@ -60,8 +60,8 @@ export = (it) => {
     test('regex str', '100', /\d{3,}/)
     test('regex str err', '10', /\d{3,}/, [ { path: [], message: [ '10', 'doesn\'t match regex', /\d{3,}/ ] } ])
 
-    test('enum', { a: 1 }, Enum({ a: 0 }, { a: 1 }))
-    test('enum err', { a: 3 }, Enum({ a: 0 }, { a: 1 }),
+    test('enum', { a: 1 }, lier.types.enum({ a: 0 }, { a: 1 }))
+    test('enum err', { a: 3 }, lier.types.enum({ a: 0 }, { a: 1 }),
         [{
             path: [],
             message: [{ a: 3 }, 'is not one of enum', [{ a: 0 }, { a: 1 }]],
@@ -308,7 +308,7 @@ export = (it) => {
     it('inspect', () => {
         const ret = lier.validate(
             {a: {b: 1}, c: 1},
-            {a: str, c: Enum(2, 3, 4)},
+            {a: str, c: lier.types.enum(2, 3, 4)},
         )
 
         return it.eq(br.strip(inspect(ret)), `

@@ -97,20 +97,19 @@ SourceElements
   }
 
 TypeDeclaration
-  = TypeToken
-    ___
-    head:Identifier
+  = TypeToken ___ head:Identifier
     tail:(
       ___
-      "."
-      ___
-      Identifier
+      (
+        "." ___ attr:Identifier { return { type: types.identifier, value: attr }; }
+        /
+        "[" ___ attr:(StringLiteral / NullLiteral / BooleanLiteral / NumericLiteral) ___ "]" { return attr; }
+      )
     )*
-    ___
-    value:PrimaryExpression {
+    ___ value:PrimaryExpression {
     return {
       type: types.declare,
-      path: buildList(head, tail, 3),
+      path: buildList({ type: types.identifier, value: head }, tail, 1),
       value: value,
     };
   }

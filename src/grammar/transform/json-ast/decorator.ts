@@ -69,8 +69,8 @@ const decorator: Decorator = {
                 value: context.prev,
             } as lier.ArrayNode
         }
-        decorator.router(node.property, {
-            prev: context.prev.property,
+        decorator.router(node.properties, {
+            prev: context.prev.properties,
         })
         decorator.router(node.object, {
             prev: context.prev.object,
@@ -168,6 +168,14 @@ const decorator: Decorator = {
         })
     },
     [Type.array]: (node, context) => {
+        if (!decorator.equal(node, context)) {
+            return
+        }
+        decorator.router(node.value, {
+            prev: context.prev.value,
+        })
+    },
+    [Type.tuple]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }

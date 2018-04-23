@@ -3,8 +3,8 @@ import { Node, Type } from '../interface'
 import style from './style'
 
 class Context {
-    root = null
     inkey = false
+    declares: string[] = []
 }
 
 interface Table {
@@ -13,42 +13,13 @@ interface Table {
     [x: number]: (node: any, context: Context) => string
 }
 
-const binaryOperators = {
-    '|': true,
-    '&': true,
-    '*': true,
-    '/': true,
-    '%': true,
-    '<<': true,
-    '>>': true,
-    '>>>': true,
-    '+': true,
-    '-': true,
-    '<=': true,
-    '>=': true,
-    '<': true,
-    '>': true,
-    '===': true,
-    '!==': true,
-    '==': true,
-    '!=': true,
-    '^': true,
-    '&&': true,
-    '||': true,
-}
-
-const unaryOperators = {
-    '+': true,
-    '-': true,
-    '!': true,
-    '~': true,
-}
-
 const TPL_CONTAINER = `<pre class="lier-container">{lines}</pre>`
 
 const TPL_LINE = `<div class="lier-line">{ranges}</div>`
 
 const TPL_BLOCK = `<div class="lier-block">{ranges}</div>`
+
+const TPL_LAYOUT = `<div class="lier-layout">{ranges}</div>`
 
 const TPL_RANGE = `<div class="lier-range lier-{class}">{range}</div>`
 
@@ -61,33 +32,29 @@ const htmlEscapes = {
 }
 
 const renderRange = (text, type) => {
-    return TPL_RANGE.replace('{class}', type).replace('{range}', text)
+    return TPL_RANGE.replace('{class}', type).replace('{range}', () => text)
 }
 
 const renderLine = (text) => {
-    return TPL_LINE.replace('{ranges}', text)
+    return TPL_LINE.replace('{ranges}', () => text)
 }
 
 const renderBlock = (text) => {
-    return TPL_BLOCK.replace('{ranges}', text)
+    return TPL_BLOCK.replace('{ranges}', () => text)
 }
 
 const renderContainer = (text) => {
-    return TPL_CONTAINER.replace('{lines}', text)
+    return TPL_CONTAINER.replace('{lines}', () => text)
+}
+
+const renderLayout = (text) => {
+    return TPL_LAYOUT.replace('{ranges}', () => text)
 }
 
 const escape = (value) => {
     return String(value).replace(/[&<>"']/g, l => {
         return htmlEscapes[l] || l
     })
-}
-
-const isdescription = (decorate) => {
-    return decorate.name === '_' || decorate.name === 'description'
-}
-
-const ismock = (decorate) => {
-    return decorate.name === 'mock'
 }
 
 const isarray = (target) => {
@@ -97,26 +64,19 @@ const isarray = (target) => {
 const table: Table = {
     start: node => {
         const context = new Context()
-        context.root = node
-        return renderContainer(table.router(node, context) || '')
+        const tags = []
+        for (const item of node) {
+            let value = table.router(item, context)
+            if (item.type === Type.comment) {
+                value = renderLine(value)
+            }
+            tags.push(value)
+        }
+        return renderContainer(context.declares.concat(tags).join(''))
     },
     router: (node, context) => {
         if (!node) {
             return node
-        }
-
-        if (node instanceof Array) {
-            const tags = []
-            tags.push(renderRange('(', style.groupStart))
-            if (node.length) {
-                for (const item of node) {
-                    tags.push(table.router(item, context))
-                    tags.push(renderRange(', ', style[',']))
-                }
-                tags.pop()
-            }
-            tags.push(renderRange(')', style.groupEnd))
-            return tags.join('')
         }
 
         const handler = table[node.type]
@@ -131,40 +91,23 @@ const table: Table = {
         const operator = node.operator
         const argument = table.router(node.argument, context)
 
-        if (unaryOperators[operator]) {
-            const tags = []
-            tags.push(renderRange(operator, style.operator))
-            tags.push(argument)
-            return tags.join('')
-        }
+        const tags = []
+        tags.push(renderRange(operator, style.operator))
+        tags.push(argument)
+        return tags.join('')
 
-        throw new Error('not implemented unary operator:' + operator)
     },
     [Type.member]: (node, context) => {
-        let self = node
-        const members = []
-        while (self) {
-            if (self.type === Type.member) {
-                if (isarray(self.property)) {
-                    const propertys = []
-                    if (self.property.length) {
-                        for (const item of self.property) {
-                            propertys.push(table.router(item, context))
-                            propertys.push(renderRange(', ', style[',']))
-                        }
-                        propertys.pop()
-                    }
-                    members.unshift(renderRange(']', style.arrayEnd))
-                    members.unshift(propertys.join(''))
-                    members.unshift(renderRange('[', style.arrayStart))
-                } else {
-                    members.unshift(renderRange(self.property.value, style.path))
-                    members.unshift(renderRange('.', style['.']))
-                }
+        const members = [table.router(node.object, context)]
+        for (const property of node.properties) {
+            if (property.type === Type.identifier) {
+                members.push(renderRange('.', style['.']))
+                members.push(renderRange(property.value, style.path))
             } else {
-                members.unshift(table.router(self, context))
+                members.push(renderRange('[', style.arrayStart))
+                members.push(table.router(property, context))
+                members.push(renderRange(']', style.arrayEnd))
             }
-            self = self.object
         }
         return members.join('')
     },
@@ -173,41 +116,28 @@ const table: Table = {
         const left = table.router(node.left, context)
         const right = table.router(node.right, context)
 
-        if (binaryOperators[operator]) {
-            const tags = []
-            tags.push(left)
-            tags.push(renderRange(operator, style.operator))
-            tags.push(right)
-            return tags.join('')
-        }
-
-        throw new Error('not implemented binary operator:' + operator)
+        const tags = []
+        tags.push(left)
+        tags.push(renderRange(operator, style.operator))
+        tags.push(right)
+        return tags.join('')
     },
     [Type.object]: (node, context) => {
         const tags = []
-        const inner = []
         tags.push(renderRange('{', style.blockStart))
-        for (const property of node.properties) {
-            context.inkey = true
-            const key = table.router(property.key, context)
-            context.inkey = false
-            const value = table.router(property.value, context)
-            property.decorators.sort((left, right) => {
-                return +!isdescription(left) - +!isdescription(right)
-            })
-            for (const decorate of property.decorators) {
-                if (!types[decorate.name]) {
-                    throw new Error('not implemented decorate:' + decorate.name)
+        if (node.properties.length) {
+            const inner = []
+            for (const property of node.properties) {
+                if (property.type !== Type.property) {
+                    inner.push(renderLine(table.router(property, context)))
+                    continue
                 }
-
-                const line = []
-                if (isdescription(decorate)) {
-                    const arg0 = decorate.arguments.length ? decorate.arguments[0] : null
-                    if (arg0 && arg0.type === Type.type && arg0.value.type === Type.string) {
-                        line.push(renderRange('#\x20', style.comment))
-                        line.push(renderRange(escape(arg0.value.value), style.description))
-                    }
-                } else {
+                context.inkey = true
+                const key = table.router(property.key, context)
+                context.inkey = false
+                const value = table.router(property.value, context)
+                for (const decorate of property.decorators) {
+                    const line = []
                     const args = []
                     if (decorate.arguments.length) {
                         for (const item of decorate.arguments) {
@@ -216,34 +146,25 @@ const table: Table = {
                         }
                         args.pop()
                     }
-                    if (ismock(decorate)) {
-                        const ranges = []
-                        ranges.push(renderRange('@\x20', style.comment))
-                        ranges.push(args.join(''))
-                        line.push(renderRange(ranges.join(''), style.mock))
-                    } else {
-                        const ranges = []
-                        ranges.push(renderRange('@', style['@']))
-                        ranges.push(renderRange(decorate.name, style.decorate))
-                        ranges.push(renderRange('(', style.groupStart))
-                        ranges.push(args.join(''))
-                        ranges.push(renderRange(')', style.groupEnd))
-                        line.push(ranges.join(''))
-                    }
+                    const ranges = []
+                    ranges.push(renderRange('@', style['@']))
+                    ranges.push(renderRange(decorate.name, style.decorate))
+                    ranges.push(renderRange('(', style.groupStart))
+                    ranges.push(args.join(''))
+                    ranges.push(renderRange(')', style.groupEnd))
+                    line.push(renderRange(ranges.join(''), style.comment))
+                    inner.push(renderLine(line.join('')))
                 }
+                const line = []
+                line.push(key)
+                if (property.optional) {
+                    line.push(renderRange('?', style['?']))
+                }
+                line.push(renderRange(':', style[':']))
+                line.push(value)
+                line.push(renderRange('', style.wrapup))
                 inner.push(renderLine(line.join('')))
             }
-            const line = []
-            line.push(key)
-            if (property.optional) {
-                line.push(renderRange('?', style['?']))
-            }
-            line.push(renderRange(':', style[':']))
-            line.push(value)
-            line.push(renderRange('', style.wrapup))
-            inner.push(renderLine(line.join('')))
-        }
-        if (node.properties.length) {
             tags.push(renderBlock(inner.join('')))
         }
         tags.push(renderRange('}', style.blockEnd))
@@ -254,15 +175,24 @@ const table: Table = {
         tags.push(renderRange('enum', style.enum))
         tags.push(renderRange('\x20', style.blank))
         tags.push(renderRange('{', style.blockStart))
-        const line = []
         if (node.arguments.length) {
-            for (const item of node.arguments) {
+            const inner = []
+            let first = true
+            for (let i = node.arguments.length - 1; i >= 0; -- i) {
+                const item = node.arguments[i]
+                const line = []
                 line.push(table.router(item, context))
-                line.push(renderRange(',', style[',']))
+                if (item.type !== Type.comment) {
+                    if (!first) {
+                        line.push(renderRange(',', style[',']))
+                    } else {
+                        first = false
+                    }
+                }
+                inner.unshift(renderLine(line.join('')))
             }
-            line.pop()
+            tags.push(renderBlock(inner.join('')))
         }
-        tags.push(renderLine(line.join('')))
         tags.push(renderRange('}', style.blockEnd))
         return tags.join('')
     },
@@ -272,13 +202,21 @@ const table: Table = {
         tags.push(renderRange('match', style.match))
         tags.push(renderRange(test, style.matchTest))
         tags.push(renderRange('{', style.blockStart))
-        for (const { test, value } of node.cases) {
-            const line = []
-            line.push(renderRange('case', style.case))
-            line.push(table.router(test, context))
-            line.push(renderRange('=>', style.operator))
-            line.push(table.router(value, context))
-            tags.push(renderLine(line.join('')))
+        if (node.cases.length) {
+            const inner = []
+            for (const cs of node.cases) {
+                if (cs.type === Type.comment) {
+                    inner.push(renderLine(table.router(cs, context)))
+                    continue
+                }
+                const line = []
+                line.push(renderRange('case', style.case))
+                line.push(table.router(cs.test, context))
+                line.push(renderRange('=>', style.operator))
+                line.push(table.router(cs.value, context))
+                inner.push(renderLine(line.join('')))
+            }
+            tags.push(renderBlock(inner.join('')))
         }
         tags.push(renderRange('}', style.blockEnd))
         return tags.join('')
@@ -299,15 +237,28 @@ const table: Table = {
         return tags.join('')
     },
     [Type.array]: (node, context) => {
+        return `${table.router(node.value, context)}[]`
+    },
+    [Type.tuple]: (node, context) => {
         const tags = []
         tags.push(renderRange('[', style.arrayStart))
         if (node.value.length) {
-            for (const item of node.value) {
-                const value = table.router(item, context)
-                tags.push(value)
-                tags.push(renderRange(',', style[',']))
+            const inner = []
+            let first = true
+            for (let i = node.value.length - 1; i >= 0; -- i) {
+                const item = node.value[i]
+                const line = []
+                line.push(table.router(item, context))
+                if (item.type !== Type.comment) {
+                    if (!first) {
+                        line.push(renderRange(',', style[',']))
+                    } else {
+                        first = false
+                    }
+                }
+                inner.unshift(renderLine(line.join('')))
             }
-            tags.pop()
+            tags.push(renderBlock(inner.join('')))
         }
         tags.push(renderRange(']', style.arrayEnd))
         return tags.join('')
@@ -341,14 +292,10 @@ const table: Table = {
             `'${escape(node.value.replace('\'', '\\\''))}'`, context.inkey ? style.key.string : style.string)
     },
     [Type.regular]: (node, context) => {
-        return renderRange(node.value, context.inkey ? style.key.regex : style.regex)
+        return renderRange(node.value.source, context.inkey ? style.key.regex : style.regex)
     },
     [Type.type]: (node, context) => {
-        if (node.value.type === Type.identifier && !types.hasOwnProperty(node.value.value)) {
-            throw new Error('not implemented type:' + node.value.value)
-        }
-        const value = table.router(node.value, context)
-        return value
+        return renderRange(node.value, style.identifier)
     },
     [Type.rest]: (node, context) => {
         const tags = []
@@ -361,9 +308,39 @@ const table: Table = {
         tags.push(table.router(node.value, context))
         tags.push(renderRange('?', style['?']))
         return tags.join('')
-    }
+    },
+    [Type.element]: (node, context) => {
+        for (const declare of node.declarations) {
+            context.declares.push(table.router(declare, context))
+        }
+        return renderLayout(table.router(node.assignment, context))
+    },
+    [Type.comment]: (node, context) => {
+        return renderRange(`# ${String(node.value).trim()}`, style.comment)
+    },
+    [Type.declare]: (node, context) => {
+        const tags = []
+        tags.push(renderRange('type', style.type))
+        const paths = node.path.slice(1)
+        const object = node.path[0]
+        const name = []
+        name.push(renderRange(object.value, style.identifier))
+        for (const path of paths) {
+            if (path.type === Type.identifier) {
+                name.push(renderRange('.', style['.']))
+                name.push(renderRange(path.value, style.path))
+            } else {
+                name.push(renderRange('[', style.arrayStart))
+                name.push(table.router(path, context))
+                name.push(renderRange(']', style.arrayEnd))
+            }
+        }
+        tags.push(renderRange(name.join(''), style.typePath))
+        tags.push(table.router(node.value, context))
+        return renderLayout(tags.join(''))
+    },
 }
 
-export default (ast: Node): string => {
+export default (ast: Node[]): string => {
     return table.start(ast)
 }

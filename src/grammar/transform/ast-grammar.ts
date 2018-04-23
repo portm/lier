@@ -50,22 +50,15 @@ const table: Table = {
     start: node => {
         const context = new Context()
         context.root = node
-        return table.router(node, context, 0)
+        const ret = []
+        for (const element of node) {
+            ret.push(table.router(element, context, 0))
+        }
+        return ret.join('\n')
     },
     router: (node, context, indent) => {
         if (!node) {
             return node
-        }
-
-        if (node instanceof Array) {
-            const ret = []
-            for (const item of node) {
-                ret.push(table.router(item, context, indent))
-            }
-            if (!ret.length) {
-                return ''
-            }
-            return `(${ret.join(', ')})`
         }
 
         const handler = table[node.type]
@@ -87,15 +80,22 @@ const table: Table = {
         throw new Error('not implemented unary operator:' + operator)
     },
     [Type.member]: (node, context, indent) => {
-        const property = table.router(node.property, context, indent)
         let object = table.router(node.object, context, indent)
         if (node.object.type === Type.unary || node.object.type === Type.binary) {
             object = `(${object})`
         }
-        if (node.property instanceof Array) {
-            return `${object}[${property.slice(1, -1)}]`
+        let ret = [object]
+        for (const property of node.properties) {
+            if (property.type === Type.identifier) {
+                ret.push('.')
+                ret.push(table.router(property, context, indent + 1))
+            } else {
+                ret.push('[')
+                ret.push(table.router(property, context, indent + 1))
+                ret.push(']')
+            }
         }
-        return `${object}.${property}`
+        return ret.join('')
     },
     [Type.binary]: (node, context, indent) => {
         const operator = node.operator
@@ -119,15 +119,21 @@ const table: Table = {
     [Type.object]: (node, context, indent) => {
         const line = []
         for (const property of node.properties) {
+            if (property.type !== Type.property) {
+                line.push(fill(table.router(property, context, indent + 1), indent + 1))
+                continue
+            }
             const key = table.router(property.key, context, indent + 1)
             const value = table.router(property.value, context, indent + 1)
             for (const decorate of property.decorators) {
                 if (!types[decorate.name]) {
                     throw new Error('not implemented decorate:' + decorate.name)
                 }
-
-                const args = table.router(decorate.arguments, context, indent + 1)
-                line.push(fill(`@${decorate.name}${args}`, indent + 1))
+                const args = []
+                for (const arg of decorate.arguments) {
+                    args.push(table.router(arg, context, indent + 1))
+                }
+                line.push(fill(`@${decorate.name}(${args.join(', ')})`, indent + 1))
             }
             line.push(fill(`${key}${property.optional ? '?' : ''}: ${value}`, indent + 1))
         }
@@ -137,19 +143,34 @@ const table: Table = {
         return `{\n${line.join('\n')}\n${fill('}', indent)}`
     },
     [Type.enum]: (node, context, indent) => {
-        const args = table.router(node.arguments, context, indent + 1)
-        if (!args.length) {
+        if (!node.arguments.length) {
             return 'enum {}'
         }
-        const body = fill(args.slice(1, -1), indent + 1)
-        return `enum {\n${body}\n${fill('}', indent)}`
+        const args = []
+        let first = true
+        for (let i = node.arguments.length - 1; i >= 0; -- i) {
+            const arg = node.arguments[i]
+            let last = ''
+            if (arg.type !== Type.comment) {
+                if (!first) {
+                    last = ','
+                } else {
+                    first = false
+                }
+            }
+            args.unshift(fill(table.router(arg, context, indent + 1) + last, indent + 1))
+        }
+        return `enum {\n${args.join('\n')}\n${fill('}', indent)}`
     },
     [Type.match]: (node, context, indent) => {
         const test = table.router(node.test, context, indent)
         const cases = []
-        for (let { test, value } of node.cases) {
-            test = table.router(test, context, indent + 1)
-            value = table.router(value, context, indent + 1)
+        for (const cs of node.cases) {
+            if (cs.type !== Type.case) {
+                cases.push(fill(table.router(cs, context, indent + 1), indent + 1))
+            }
+            const test = table.router(cs.test, context, indent + 1)
+            const value = table.router(cs.value, context, indent + 1)
             cases.push(fill(`case ${test} => ${value}`, indent + 1))
         }
         if (!cases.length) {
@@ -159,12 +180,34 @@ const table: Table = {
     },
     [Type.call]: (node, context, indent) => {
         const callee = table.router(node.callee, context, indent)
-        const args = table.router(node.arguments, context, indent)
-        return `${callee}${args}`
+        const args = []
+        for (const arg of node.arguments) {
+            args.push(table.router(arg, context, indent + 1))
+        }
+        return `${callee}(${args.join(', ')})`
+    },
+    [Type.tuple]: (node, context, indent) => {
+        if (!node.value.length) {
+            return '[]'
+        }
+        const args = []
+        let first = true
+        for (let i = node.value.length - 1; i >= 0; -- i) {
+            const arg = node.value[i]
+            let last = ''
+            if (arg.type !== Type.comment) {
+                if (!first) {
+                    last = ','
+                } else {
+                    first = false
+                }
+            }
+            args.unshift(fill(table.router(arg, context, indent + 1) + last, indent + 1))
+        }
+        return `[\n${args.join('\n')}\n${fill(']', indent)}`
     },
     [Type.array]: (node, context, indent) => {
-        const args = table.router(node.value, context, indent)
-        return `[${args.slice(1, -1)}]`
+        return `${table.router(node.value, context, indent)}[]`
     },
     [Type.identifier]: (node, context, indent) => {
         return node.value
@@ -191,20 +234,40 @@ const table: Table = {
         return node.value
     },
     [Type.type]: (node, context, indent) => {
-        if (node.value.type === Type.identifier && !types.hasOwnProperty(node.value.value)) {
-            throw new Error('not implemented type:' + node.value.value)
-        }
-        const value = table.router(node.value, context, indent)
-        return value
+        return node.value
     },
     [Type.rest]: (node, context, indent) => {
         return `...${table.router(node.value, context, indent)}`
     },
     [Type.optional]: (node, context, indent) => {
         return `${table.router(node.value, context, indent)}?`
-    }
+    },
+    [Type.comment]: (node, context, indent) => {
+        return `# ${String(node.value).trim()}`
+    },
+    [Type.element]: (node, context, indent) => {
+        const ret = []
+        for (const declare of node.declarations) {
+            ret.push(table.router(declare, context, indent))
+        }
+        ret.push(`${table.router(node.assignment, context, indent)}`)
+        return ret.join('\n')
+    },
+    [Type.declare]: (node, context, indent) => {
+        const path = node.path.slice()
+        const ret = [`type ${table.router(path.shift(), context, indent)}`]
+        for (const item of path) {
+            if (item.type === Type.identifier) {
+                ret.push(`.${item.value}`)
+            } else {
+                ret.push(`[${table.router(item, context, indent)}]`)
+            }
+        }
+        ret.push(' ', table.router(node.value, context, indent))
+        return ret.join('')
+    },
 }
 
-export default (ast: Node): string => {
+export default (ast: Node[]): string => {
     return String(table.start(ast))
 }

@@ -71,6 +71,65 @@ console.time('parse')
 //     }
 // ], base)))
 
+const allLier = `
+type sf.a uint
+type B [
+    int?,
+    ...str
+]
+type A {
+    a: uint
+    b: A[]
+}
+{
+    @mock(1)
+    regex : /^\\d$/
+    /regex1/ : int
+    # a
+    # b
+    oct : 066
+    dec : 66
+    hex : 0xff
+    int : int
+    str : str
+    bool : bool
+    optional? : bool
+    byte : byte
+    short : short
+    uint : uint
+    float : float
+    @mock(2)
+    @mock(1)
+    enum : enum {
+        # 1
+        1, 2
+    }
+    @mock(3)
+    allOf : int & uint
+    anyOf : int | str
+    # any 匹配任何东西
+    any : any
+    # never 不匹配任何东西
+    never? : never
+    @mockKey(1)
+    $rest : any
+    sub : {
+        a : this.int | this.str
+        b : self.regex * self.regex + 1
+        this : this.sub
+    }[]
+    @mock(6)
+    match : match self.regex {
+        case 2 => 2 * 2
+        case any => 3 * 2
+    }
+    sf: sf.a
+    A: A
+    B: B
+    @range(10, 15)
+    C?: int
+}`
+
 console.log(lier.validatex({
     "regex": 2,
     "oct": 54,
@@ -110,61 +169,97 @@ console.log(lier.validatex({
             b: [],
         }],
     },
-    B: [1,'2']
-}, `
-type sf.a uint
-type B [
-    int?,
-    ...str
-]
-type A {
-    a: uint
-    b: A[]
+    B: [1, '2']
+}, allLier))
+
+const schemaAst = jsonschema2ast({
+    "$schema": "http://json-schema.org/draft-04/schema#",
+
+    "definitions": {
+        "address": {
+            "description": "address",
+            "type": "object",
+            "properties": {
+                "street_address": {
+                    "description": "street_address",
+                    "type": "string"
+                },
+                "city": {
+                    "description": "city",
+                    "type": "string"
+                },
+                "state": {
+                    "description": "state",
+                    "type": "integer",
+                    minimum: 10,
+                    maximum: 15,
+                }
+            },
+            "required": ["street_address", "city", "state"]
+        }
+    },
+
+    "type": "object",
+
+    "description": "test",
+
+    "properties": {
+        "billing_address": {
+            "description": "billing_address",
+            "$ref": "#/definitions/address"
+        },
+        "shipping_address": {
+            "description": "shipping_address",
+            "allOf": [
+                { "$ref": "#/definitions/address" },
+                {
+                    "properties": {
+                        "type": {
+                            description: 'type',
+                            "enum": ["residential", "business"]
+                        }
+                    },
+                    "required": ["type"]
+                }
+            ]
+        }
+    }
 }
-{
-    @mock(1)
-    regex : /^\\d$/
-    /regex1/ : int
-    # a
-    # b
-    oct : 066
-    dec : 66
-    hex : 0xff
-    int : int
-    str : str
-    bool : bool
-    optional? : bool
-    byte : byte
-    short : short
-    uint : uint
-    float : float
-    @mock(2)
-    @mock(1)
-    enum : enum {
-        1, 2
+)
+
+console.log(lier.stringify(schemaAst))
+
+const schemaCompile = lier.compile(schemaAst)
+
+console.log(lier.validate({
+    billing_address: {
+        street_address: 'a',
+        city: 'a',
+        state: 12
+    },
+    "shipping_address": {
+        "street_address": "1600 Pennsylvania Avenue NW",
+        "city": "Washington",
+        "state": 13,
+        "type": "business"
     }
-    @mock(3)
-    allOf : int & uint
-    anyOf : int | str
-    # any 匹配任何东西
-    any : any
-    # never 不匹配任何东西
-    never? : never
-    @mockKey(1)
-    $rest : any
-    sub : {
-        a : this.int | this.str
-        b : self.regex * self.regex + 1
-        this : this.sub
-    }[]
-    @mock(6)
-    match : match self.regex {
-        case 2 => 2 * 2
-        case any => 3 * 2
-    }
-    sf: sf.a
-    A: A
-    B: B
-}`))
+}, schemaCompile.assignment, schemaCompile.declares))
+
+// console.log(JSON.stringify(ast2jsonschema(schemaAst), null, 4))
+
+const arrayTest = `
+type a.b 1
+[
+    #aa
+    'save',
+    ['$', {
+        a: int
+    }],
+    a.b
+]
+`
+console.log(lier.stringify(lier.parse(arrayTest)))
+
+console.log(lier.format(arrayTest))
 
 console.timeEnd('parse')

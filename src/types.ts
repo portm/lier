@@ -336,13 +336,16 @@ function self (fn:  (self: any) => any): Type {
 
 function definition (paths: string[]): Type {
     return function fn (ctx: Context) {
+        if (!_.isObjectLike(_.get(ctx, 'root.declares'))) {
+            throw 'not implemented type:' + paths.join('.')
+        }
         const type = _.get(ctx.root.declares, paths)
         if (ctx.root.isMock) {
             return ctx.mock(type)
         }
 
         if (!type) {
-            ctx.root.errors.push(new LierError(ctx.path, ['property should be void']))
+            ctx.root.errors.push(new LierError(ctx.path, ['not implemented type:' + paths.join('.')]))
             return
         }
         ctx.validate(ctx.data, type)
@@ -429,20 +432,15 @@ function getError (data: any, path: string | string[]) {
 export default {
     // data form
     bool,
-    boolean: bool,
 
     int8: int(8),
-    i8: int(8),
     byte: int(8),
     int16: int(16),
-    i16: int(16),
     short: int(16),
     int32: int(32),
-    i32: int(32),
     int: int(32),
     int64: int(64),
     int128: int(128),
-    i64: int(64),
     i128: int(128),
     long: int(64),
 
@@ -459,7 +457,6 @@ export default {
     number: double,
 
     str,
-    string: str,
 
     tuple,
 
@@ -467,7 +464,6 @@ export default {
     Infinity,
     eq,
     enum: Enum,
-    Enum,
     merge: _.merge,
     optional,
     mock,

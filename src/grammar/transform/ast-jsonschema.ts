@@ -2,27 +2,26 @@ import { types } from '../../'
 import { Node, Type } from '../interface'
 import * as _ from 'lodash'
 
-export class Context {
-    root = null
+class Context {
+    definitions: {
+        [key: string]: any
+    }
 }
 
-export interface Visitor {
+interface Visitor {
     start: (node, context: Context) => any
     router: (node, context: Context) => any
     [x: number]: (node: any, context: Context) => any
 }
 
-export const getDecorateArgs = (decorate, index) => {
-    if (!decorate[index]) {
+const getDecorateArgs = (decorate, index) => {
+    if (!decorate[index] || isNaN(+decorate[index].value) || decorate[index].value === 'Infinity') {
         return null
     }
-    if (decorate[index].type !== Type.type) {
-        return null
-    }
-    return decorate[index].value.value
+    return decorate[index].value
 }
 
-export const setDecorator = (decorators, target) => {
+const setDecorator = (decorators, target) => {
     for (const decorate of decorators) {
         if (!types[decorate.name]) {
             throw new Error('not implemented decorate:' + decorate.name)
@@ -38,17 +37,29 @@ export const setDecorator = (decorators, target) => {
         } else if (decorate.name === 'range') {
             if (target.type === 'integer' || target.type === 'number' || target.type === 'string') {
                 if (decorate.arguments.length === 1) {
-                    target.maximum = getDecorateArgs(decorate.arguments, 0)
+                    const temp = getDecorateArgs(decorate.arguments, 0)
+                    if (temp) {
+                        target.maximum = temp
+                    }
                 } else if (decorate.arguments.length === 2) {
                     target.minimum = getDecorateArgs(decorate.arguments, 0)
-                    target.maximum = getDecorateArgs(decorate.arguments, 1)
+                    const temp = getDecorateArgs(decorate.arguments, 1)
+                    if (temp) {
+                        target.maximum = temp
+                    }
                 }
             } else if (target.items) {
                 if (decorate.arguments.length === 1) {
-                    target.maxItems = getDecorateArgs(decorate.arguments, 0)
+                    const temp = getDecorateArgs(decorate.arguments, 0)
+                    if (temp) {
+                        target.maxItems = temp
+                    }
                 } else if (decorate.arguments.length === 2) {
                     target.minItems = getDecorateArgs(decorate.arguments, 0)
-                    target.maxItems = getDecorateArgs(decorate.arguments, 1)
+                    const temp = getDecorateArgs(decorate.arguments, 1)
+                    if (temp) {
+                        target.minItems = temp
+                    }
                 }
             }
         }
@@ -58,24 +69,49 @@ export const setDecorator = (decorators, target) => {
 const typeMapping = {
     str: 'string',
     int: 'integer',
+    uint: 'integer',
+    number: 'number',
+    int8: 'integer',
+    int32: 'integer',
+    int64: 'number',
+    int128: 'number',
+    uint8: 'integer',
+    uint32: 'integer',
+    uint64: 'number',
+    uint128: 'number',
     bool: 'boolean',
+    float: 'number',
+    short: 'integer',
+    byte: 'integer',
+    oneOf: 'oneOf',
+    anyOf: 'anyOf',
+    allOf: 'allOf',
 }
 
-export const visitor: Visitor = {
+const visitor: Visitor = {
     start: function (node, context) {
-        context.root = node
-        return this.router(node, context)
+        let desc = ''
+        for (const element of node) {
+            if (element.type !== Type.element) {
+                if (desc) {
+                    desc += '\n' + element.value
+                } else {
+                    desc = element.value
+                }
+                continue
+            }
+            const ret = this.router(element, context)
+            if (desc) {
+                ret.description = desc
+                desc = ''
+            }
+            return ret
+        }
+        return null
     },
     router: function (node, context) {
         if (!node) {
             return node
-        }
-
-        if (node instanceof Array) {
-            if (!node.length) {
-                return null
-            }
-            return this.router(node[node.length - 1], context)
         }
 
         const handler = this[node.type]
@@ -99,62 +135,14 @@ export const visitor: Visitor = {
         }
     },
     [Type.member]: function (node, context) {
-        const members = []
-        let self = node
-        while (self) {
-            if (self.type === Type.member) {
-                let property = self.property
-                if (property instanceof Array) {
-                    if (!property.length) {
-                        members.unshift(null)
-                        self = self.object
-                        continue
-                    }
-                    property = property[property.length - 1]
-                }
-                if (property.type === Type.type && (
-                    property.value.type === Type.number
-                    || property.value.type === Type.string
-                    || property.value.type === Type.regular
-                    || property.value.type === Type.boolean
-                    || property.value.type === Type.null)
-                ) {
-                    members.unshift(property.value.type === Type.null ? null : property.value.value)
-                } else if (property.type === Type.identifier) {
-                    let value = property.value
-                    if (value === '$definitions') {
-                        value = 'definitions'
-                    }
-                    members.unshift(value)
-                } else {
-                    members.unshift(this.router(property, context))
-                }
-            } else if (self.type === Type.type && self.value.type === Type.this) {
-                members.unshift('#')
-            } else {
-                members.unshift(this.router(self, context))
-            }
-            self = self.object
-        }
-        let deep = 0
-        while (members[members.length - 1] === null) {
-            deep++
-            members.pop()
-        }
-        let ret
-        if (members[0] === '#') {
-            ret = {
-                $ref: members.join('/')
-            }
-        } else {
-            ret = members[0]
-        }
-        while (deep--) {
-            ret = {
-                items: ret
+        if (node.object.type === Type.type) {
+            return {
+                $ref: `#/definitions/${node.object.value}/${node.properties.map(path => path.value).join('/')}`
             }
         }
-        return ret
+        return {
+            $ref: `#/${node.properties.map(path => path.value).join('/')}`
+        }
     },
     [Type.binary]: function (node, context) {
         const operator = node.operator
@@ -218,60 +206,67 @@ export const visitor: Visitor = {
             type: 'object',
         }
         if (node.properties.length) {
+            let desc
             for (const property of node.properties) {
-                const key = property.key.value
-                if (key === '$definitions') {
-                    object.definitions = {}
-                    let value = property.value
-                    if (value.type === Type.type) {
-                        value = value.value
-                    }
-                    if (value.type === Type.object) {
-                        for (const prop of value.properties) {
-                            object.definitions[prop.key.value] = this.router(prop.value, context)
-                        }
+                if (property.type !== Type.property) {
+                    if (desc) {
+                        desc += '\n' + property.value
                     } else {
-                        object.definitions = this.router(value, context)
+                        desc = property.value
                     }
                     continue
                 }
+                const key = property.key
                 const value = this.router(property.value, context)
                 if (value === null) {
                     continue
                 }
-                if (key === '$export') {
-                    delete object.type
-                    _.assign(object, value)
-                    continue
-                }
-                if (property.key.type === Type.string || property.key.type === Type.number) {
+                if (key.type === Type.string || key.type === Type.number) {
                     if (!object.properties) {
                         object.properties = {}
                     }
-                    object.properties[key] = value
-                    setDecorator(property.decorators, object.properties[key])
-                } else if (property.key.type === Type.identifier) {
-                    if (key === '$rest') {
+                    object.properties[key.value] = value
+                    setDecorator(property.decorators, object.properties[key.value])
+                    if (desc) {
+                        if (value) {
+                            value.description = desc
+                        }
+                        desc = ''
+                    }
+                } else if (key.type === Type.identifier) {
+                    if (key.value === '$rest') {
                         object.additionalProperties = value
                         continue
                     }
                     if (!object.properties) {
                         object.properties = {}
                     }
-                    object.properties[key] = value
-                    setDecorator(property.decorators, object.properties[key])
-                } else if (property.key.type === Type.regular) {
+                    object.properties[key.value] = value
+                    setDecorator(property.decorators, object.properties[key.value])
+                    if (desc) {
+                        if (value) {
+                            value.description = desc
+                        }
+                        desc = ''
+                    }
+                } else if (key.type === Type.regular) {
                     if (!object.patternProperties) {
                         object.patternProperties = {}
                     }
-                    object.patternProperties[key.source] = value
-                    setDecorator(property.decorators, object.patternProperties[key.source])
+                    object.patternProperties[key.value.source] = value
+                    setDecorator(property.decorators, object.patternProperties[key.value.source])
+                    if (desc) {
+                        if (value) {
+                            value.description = desc
+                        }
+                        desc = ''
+                    }
                 }
-                if (!property.optional && property.key.type !== Type.regular) {
+                if (!property.optional && key.type !== Type.regular) {
                     if (!object.required) {
                         object.required = []
                     }
-                    object.required.push(key)
+                    object.required.push(key.value)
                 }
             }
         } else {
@@ -294,35 +289,44 @@ export const visitor: Visitor = {
     },
     [Type.call]: function (node, context) {
         const callee = this.router(node.callee, context)
-        if (callee !== 'oneOf' && callee !== 'anyOf' && callee !== 'allOf' && callee !== 'not') {
+        if (!callee
+            || callee.type !== 'oneOf' && callee.type !== 'anyOf' && callee.type !== 'allOf' && callee.type !== 'not') {
             return {}
         }
         const compound = {
-            [callee]: []
+            [callee.type]: []
         }
         for (const arg of node.arguments) {
-            compound[callee].push(this.router(arg, context))
+            compound[callee.type].push(this.router(arg, context))
         }
         return compound
     },
     [Type.array]: function (node, context) {
         const array = {
-            items: []
-        }
-        for (const item of node.value) {
-            array.items.push(this.router(item, context))
+            items: [this.router(node.value, context)]
         }
         return array
     },
+    [Type.tuple]: function (node, context) {
+        return {}
+    },
     [Type.identifier]: function (node, context) {
+        return node.value
+    },
+    [Type.type]: function (node, context) {
         if (node.value === 'never') {
             return false
         }
         if (node.value === 'any') {
-            return null
+            return {}
+        }
+        if (typeMapping[node.value]) {
+            return {
+                type: typeMapping[node.value],
+            }
         }
         return {
-            type: typeMapping[node.value] || node.value
+            $ref: `#/definitions/${node.value}`,
         }
     },
     [Type.null]: function (node, context) {
@@ -353,24 +357,37 @@ export const visitor: Visitor = {
     },
     [Type.regular]: function (node, context) {
         return {
+            type: 'string',
             pattern: node.value.source
         }
-    },
-    [Type.type]: function (node, context) {
-        if (node.value.type === Type.identifier && !types.hasOwnProperty(node.value.value)) {
-            throw new Error('not implemented type:' + node.value.value)
-        }
-        const value = this.router(node.value, context)
-        return value
     },
     [Type.rest]: function (node, context) {
         return {}
     },
     [Type.optional]: function (node, context) {
         return {}
+    },
+    [Type.declare]: function (node, context) {
+        if (!context.definitions) {
+            context.definitions = {}
+        }
+        _.set(context.definitions, node.path.map(path => path.value), this.router(node.value, context))
+    },
+    [Type.element]: function (node, context) {
+        for (const declare of node.declarations) {
+            this.router(declare, context)
+        }
+        return this.router(node.assignment, context)
     }
 }
 
-export default (ast: Node): any => {
-    return visitor.start(ast, new Context())
+export default (ast: Node[]): any => {
+    const context = new Context()
+    const ret = visitor.start(ast, context)
+    if (ret) {
+        if (context.definitions) {
+            ret.definitions = context.definitions
+        }
+    }
+    return ret
 }

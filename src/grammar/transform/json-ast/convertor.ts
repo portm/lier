@@ -19,6 +19,13 @@ const assertContext = (context: Context, type: string) => {
     return utils.type(context.brother) === type
 }
 
+const makeType = (value): lier.TypeNode => {
+    return {
+        type: Type.type,
+        value,
+    }
+}
+
 const convertor: Convertor = {
     router: (context: Context): lier.Node => {
         if (!context || context.data == null) {
@@ -61,10 +68,7 @@ const convertor: Convertor = {
         if (assertContext(context, 'String')) {
             return null
         }
-        return {
-            type: Type.identifier,
-            value: 'str',
-        } as lier.IdentifierNode
+        return makeType('str')
     },
     number: (context: Context): lier.Node => {
         const value = context.data
@@ -75,19 +79,13 @@ const convertor: Convertor = {
                 return null
             }
         }
-        return {
-            type: Type.identifier,
-            value: integer ? 'int' : 'number',
-        } as lier.IdentifierNode
+        return makeType(integer ? 'int' : 'number')
     },
     boolean: (context: Context): lier.Node => {
         if (assertContext(context, 'Boolean')) {
             return null
         }
-        return {
-            type: Type.identifier,
-            value: 'bool',
-        } as lier.IdentifierNode
+        return makeType('bool')
     },
     array: (context: Context): lier.Node => {
         const array = context.data
@@ -210,9 +208,13 @@ const convertor: Convertor = {
     },
 }
 
-export default (data): lier.Node => {
+export default (data): lier.Node[] => {
     const node = convertor.router({
         data,
     })
-    return node
+    return [{
+        type: Type.element,
+        declarations: [],
+        assignment: node
+    } as lier.ElementNode]
 }
