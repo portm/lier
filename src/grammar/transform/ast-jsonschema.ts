@@ -91,6 +91,7 @@ const typeMapping = {
 const visitor: Visitor = {
     start: function (node, context) {
         let desc = ''
+        let ret = null
         for (const element of node) {
             if (element.type !== Type.element) {
                 if (desc) {
@@ -100,14 +101,13 @@ const visitor: Visitor = {
                 }
                 continue
             }
-            const ret = this.router(element, context)
-            if (desc) {
-                ret.description = desc
-                desc = ''
-            }
-            return ret
+            ret = this.router(element, context)
         }
-        return null
+        if (desc && ret) {
+            ret.description = desc
+            desc = ''
+        }
+        return ret
     },
     router: function (node, context) {
         if (!node) {
@@ -207,6 +207,7 @@ const visitor: Visitor = {
         }
         if (node.properties.length) {
             let desc
+            let value
             for (const property of node.properties) {
                 if (property.type !== Type.property) {
                     if (desc) {
@@ -217,7 +218,7 @@ const visitor: Visitor = {
                     continue
                 }
                 const key = property.key
-                const value = this.router(property.value, context)
+                value = this.router(property.value, context)
                 if (value === null) {
                     continue
                 }
@@ -267,6 +268,13 @@ const visitor: Visitor = {
                         object.required = []
                     }
                     object.required.push(key.value)
+                }
+                if (desc && value) {
+                    if (value.description) {
+                        value.description += '\n' + desc
+                    } else {
+                        value.description = desc
+                    }
                 }
             }
         } else {
@@ -335,9 +343,6 @@ const visitor: Visitor = {
         }
     },
     [Type.self]: function (node, context) {
-        return {}
-    },
-    [Type.this]: function (node, context) {
         return {}
     },
     [Type.boolean]: function (node, context) {

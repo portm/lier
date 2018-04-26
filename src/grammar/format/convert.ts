@@ -278,9 +278,6 @@ const table: Table = {
     [Type.self]: (node, context) => {
         return renderRange('self', style.self)
     },
-    [Type.this]: (node, context) => {
-        return renderRange('this', style.this)
-    },
     [Type.boolean]: (node, context) => {
         return renderRange(node.value, context.inkey ? style.key.identifier : style.identifier)
     },

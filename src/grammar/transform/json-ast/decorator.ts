@@ -4,40 +4,20 @@ import utils from './utils'
 const Type = lier.Type
 
 interface Context {
-    prev: any
+    type: any
 }
 
 interface Decorator {
     router: (node: any, context: Context) => void
     equal: (node: any, context: Context) => boolean
+    pairing: (left: any, right: any, attr: string) => void
     [operator: number]: (node: any, context: Context) => void
 }
 
 const decorator: Decorator = {
     router: (node, context) => {
-        if (!node || !context.prev) {
-            return
-        }
-        node = utils.value(node)
-        let prev = utils.value(context.prev)
-        if (utils.type(node) === 'Array') {
-            if (utils.type(prev) !== 'Array') {
-                decorator.router(node[0], {
-                    prev,
-                })
-            } else {
-                for (let i = 0; i < node.length; ++ i) {
-                    decorator.router(node[i], {
-                        prev: prev[i],
-                    })
-                }
-            }
-            return
-        }
-        if (utils.type(prev) === 'Array') {
-            decorator.router(node, {
-                prev: prev[0],
-            })
+        const type = context.type
+        if (!node || !type) {
             return
         }
         const handler = decorator[node.type]
@@ -45,35 +25,71 @@ const decorator: Decorator = {
             return
         }
         handler(node, {
-            prev,
+            type,
         })
     },
     equal: (node, context) => {
-        return context.prev && context.prev.type === node.type
+        return context.type && context.type.type === node.type
+    },
+    pairing: (left, right, attr) => {
+        const oldValue = right[attr].slice()
+        const newValue = left[attr]
+        const ret = []
+        while (oldValue.length && newValue.length) {
+            const comments = []
+            let oldTop
+            let newTop
+            while (oldValue.length) {
+                oldTop = oldValue.shift()
+                if (oldTop.type === Type.comment) {
+                    comments.push(oldValue)
+                } else {
+                    break
+                }
+            }
+            while (newValue.length) {
+                newTop = newValue.shift()
+                ret.push(newTop)
+                if (newTop.type === Type.comment) {
+                    comments.length = 0
+                } else {
+                    break
+                }
+            }
+            if (!newTop || !oldTop) {
+                break
+            }
+
+            ret.splice(Math.max(ret.length - 1, 0), 0, ...comments)
+            decorator.router(newTop, {
+                type: oldTop,
+            })
+        }
+        left[attr] = ret
     },
     [Type.unary]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
         decorator.router(node.argument, {
-            prev: utils.value(context.prev.argument),
+            type: context.type.argument,
         })
     },
     [Type.member]: (node, context) => {
-        if (!context.prev) {
+        if (!context.type) {
             return
         }
-        if (context.prev.type !== node.type) {
-            context.prev = {
+        if (context.type.type !== node.type) {
+            context.type = {
                 type: Type.array,
-                value: context.prev,
+                value: context.type,
             } as lier.ArrayNode
         }
         decorator.router(node.properties, {
-            prev: context.prev.properties,
+            type: context.type.properties,
         })
         decorator.router(node.object, {
-            prev: context.prev.object,
+            type: context.type.object,
         })
     },
     [Type.binary]: (node, context) => {
@@ -81,10 +97,10 @@ const decorator: Decorator = {
             return
         }
         decorator.router(node.left, {
-            prev: context.prev.left,
+            type: context.type.left,
         })
         decorator.router(node.right, {
-            prev: context.prev.right,
+            type: context.type.right,
         })
     },
     [Type.object]: (node, context) => {
@@ -92,31 +108,48 @@ const decorator: Decorator = {
             return
         }
         const prevMap = {}
-        for (const property of context.prev.properties) {
-            const key = utils.value(property.key)
-            if (!key) {
-                continue
+        let comments = []
+        for (const property of context.type.properties) {
+            if (property.type === Type.comment) {
+                comments.push(property)
             }
-            prevMap[key.value] = property
+            const key = property.key.value
+            prevMap[key] = {
+                property,
+                comments,
+            }
+            comments = []
         }
-        for (const property of node.properties) {
-            const key = utils.value(property.key)
-            if (!key) {
+        const newProperties = []
+        let flag = true
+        while (node.properties.length) {
+            const property = node.properties.shift()
+            newProperties.push(property)
+            if (property.type === Type.comment) {
+                flag = false
                 continue
             }
-            if (!prevMap[key.value]) {
+            const key = property.key.value
+            const prev = prevMap[key]
+            if (!prev) {
+                flag = true
                 continue
+            }
+            if (flag) {
+                newProperties.splice(Math.max(newProperties.length - 1, 0), 0, ...prev.comments)
             }
             decorator.router(property, {
-                prev: prevMap[key.value],
+                type: prev.property,
             })
+            flag = true
         }
+        node.properties = newProperties
     },
     [Type.property]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
-        const prev = context.prev
+        const prev = context.type
         if (prev.decorators.length) {
             node.decorators = prev.decorators
         }
@@ -124,71 +157,74 @@ const decorator: Decorator = {
             node.optional = true
         }
         decorator.router(node.value, {
-            prev: context.prev.value,
+            type: context.type.value,
         })
     },
     [Type.enum]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
-        decorator.router(node.arguments, {
-            prev: context.prev.arguments,
-        })
+        decorator.pairing(node, context.type, 'arguments')
     },
     [Type.match]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
         decorator.router(node.test, {
-            prev: context.prev.test,
+            type: context.type.test,
         })
-        for (let i = 0; i < node.cases.length; ++ i) {
-            const { test, value } = node.cases[i]
-            const prevCase = context.prev.cases[i]
-            if (!prevCase) {
-                break
-            }
-            decorator.router(test, {
-                prev: prevCase.test,
-            })
-            decorator.router(value, {
-                prev: prevCase.value,
-            })
+        decorator.pairing(node, context.type, 'cases')
+    },
+    [Type.case]: (node, context) => {
+        if (!decorator.equal(node, context)) {
+            return
         }
+        const { test, value } = node
+        const prevCase = context.type
+
+        decorator.router(test, {
+            type: prevCase.test,
+        })
+        decorator.router(value, {
+            type: prevCase.value,
+        })
     },
     [Type.call]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
         decorator.router(node.callee, {
-            prev: context.prev.callee,
+            type: context.type.callee,
         })
-        decorator.router(node.arguments, {
-            prev: context.prev.arguments,
-        })
+        for (let i = 0; i < node.arguments.length; ++ i) {
+            if (!context.type.arguments[i]) {
+                break
+            }
+            decorator.router(node.arguments[i], {
+                type: context.type.arguments[i],
+            })
+        }
     },
     [Type.array]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
         decorator.router(node.value, {
-            prev: context.prev.value,
+            type: context.type.value,
         })
     },
     [Type.tuple]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
-        decorator.router(node.value, {
-            prev: context.prev.value,
-        })
+        decorator.pairing(node, context.type, 'value')
     },
     [Type.rest]: (node, context) => {
         if (!decorator.equal(node, context)) {
             return
         }
         decorator.router(node.value, {
-            prev: context.prev.value,
+            type: context.type.value,
         })
     },
     [Type.optional]: (node, context) => {
@@ -196,13 +232,42 @@ const decorator: Decorator = {
             return
         }
         decorator.router(node.value, {
-            prev: context.prev.value,
+            type: context.type.value,
         })
-    }
+    },
+    [Type.element]: (node, context) => {
+        if (!decorator.equal(node, context)) {
+            return
+        }
+        decorator.pairing(node, context.type, 'declarations')
+        decorator.router(node.assignment, {
+            type: context.type.assignment,
+        })
+    },
 }
 
-export default (ast: lier.Node, prev: lier.Node): void => {
-    decorator.router(ast, {
-        prev,
-    })
+export default (newType: lier.Node[], oldType: lier.Node[]): void => {
+    let element
+    const comments = []
+    for (const item of oldType) {
+        if (item.type === Type.element) {
+            element = item
+        } else {
+            comments.push(item)
+        }
+    }
+    if (!element) {
+        return
+    }
+    if (newType[0].type === Type.element && comments.length) {
+        newType.splice(0, 0, ...comments)
+    }
+    for (const item of newType) {
+        if (item.type !== Type.element) {
+            continue
+        }
+        decorator.router(item, {
+            type: element,
+        })
+    }
 }

@@ -107,9 +107,6 @@ const table: Table = {
             return unpacking(table.router(property, context))
         })
         const object = node.object
-        if (object.type === Type.this) {
-            return types.ref(properties)
-        }
         if (object.type === Type.self) {
             return packing(value => {
                 let ret = value
@@ -453,9 +450,6 @@ const table: Table = {
     },
     [Type.declare]: (node, context) => {
         _.set(context.declares, node.path.map(path => path.value), unpacking(table.router(node.value, context)))
-    },
-    [Type.this]: (node, context) => {
-        return types.ref()
     },
     [Type.self]: (node, context) => {
         return types.self(self => self)

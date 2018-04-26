@@ -8,7 +8,7 @@ export enum Type {
     enum,
     match,
     self,
-    this,
+    whitespace,
     call,
     array,
     identifier,
@@ -23,7 +23,6 @@ export enum Type {
     optional,
     element,
     comment,
-    whitespace,
     tuple,
     declare,
 }

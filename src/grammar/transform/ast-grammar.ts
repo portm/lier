@@ -218,9 +218,6 @@ const table: Table = {
     [Type.self]: (node, context, indent) => {
         return 'self'
     },
-    [Type.this]: (node, context, indent) => {
-        return 'this'
-    },
     [Type.boolean]: (node, context, indent) => {
         return node.value
     },

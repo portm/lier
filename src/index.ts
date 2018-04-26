@@ -1,3 +1,4 @@
+import * as _ from 'lodash'
 import { compile, deduction, format, formatByAst, parse, stringify } from './grammar'
 import { Options, LierError } from './interfaces'
 import mock from './mock'
@@ -12,19 +13,19 @@ function assert (data, type, declares?) {
     }
 }
 
-function assertx (data, lang) {
+function assertx (data, lang, declares = {}) {
     const tree = compile(parse(lang))
-    return assert(data, tree.assignment, tree.declares)
+    return assert(data, tree.assignment, _.defaultsDeep(declares, tree.declares))
 }
 
-function validatex (data, lang) {
+function validatex (data, lang, declares = {}) {
     const tree = compile(parse(lang))
-    return validate(data, tree.assignment, tree.declares)
+    return validate(data, tree.assignment, _.defaultsDeep(declares, tree.declares))
 }
 
-function mockx (lang) {
+function mockx (lang, declares = {}) {
     const tree = compile(parse(lang))
-    return mock(tree.assignment, tree.declares)
+    return mock(tree.assignment, _.defaultsDeep(declares, tree.declares))
 }
 
 export {

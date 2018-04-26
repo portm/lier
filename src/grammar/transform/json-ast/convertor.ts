@@ -1,5 +1,5 @@
 import * as lier from '../../interface'
-import utils from './utils'
+import utils from '../../utils'
 
 declare let Set
 
@@ -16,14 +16,7 @@ interface Convertor {
 }
 
 const assertContext = (context: Context, type: string) => {
-    return utils.type(context.brother) === type
-}
-
-const makeType = (value): lier.TypeNode => {
-    return {
-        type: Type.type,
-        value,
-    }
+    return utils.getType(context.brother) === type
 }
 
 const convertor: Convertor = {
@@ -32,7 +25,7 @@ const convertor: Convertor = {
             return convertor.null(context)
         }
     
-        const type = utils.type(context.data)
+        const type = utils.getType(context.data)
     
         if (type === 'String') {
             return convertor.string(context)
@@ -68,24 +61,24 @@ const convertor: Convertor = {
         if (assertContext(context, 'String')) {
             return null
         }
-        return makeType('str')
+        return utils.makeType('str')
     },
     number: (context: Context): lier.Node => {
         const value = context.data
-        const integer = utils.integer(value)
+        const integer = utils.isInteger(value)
         if (assertContext(context, 'Number')) {
-            const oldInteger = utils.integer(context.brother)
+            const oldInteger = utils.isInteger(context.brother)
             if ((integer && oldInteger || !integer && !oldInteger)) {
                 return null
             }
         }
-        return makeType(integer ? 'int' : 'number')
+        return utils.makeType(integer ? 'int' : 'number')
     },
     boolean: (context: Context): lier.Node => {
         if (assertContext(context, 'Boolean')) {
             return null
         }
-        return makeType('bool')
+        return utils.makeType('bool')
     },
     array: (context: Context): lier.Node => {
         const array = context.data
@@ -178,7 +171,7 @@ const convertor: Convertor = {
                         type: Type.property,
                         decorators: [],
                         optional: false,
-                        key: utils.key(key),
+                        key: utils.makeKey(key),
                         value: node,
                     } as lier.PropertyNode)
                 } else {
@@ -195,7 +188,7 @@ const convertor: Convertor = {
                 type: Type.property,
                 decorators: [],
                 optional: false,
-                key: utils.key(key),
+                key: utils.makeKey(key),
                 value: convertor.router({
                     data: object[key],
                 }),

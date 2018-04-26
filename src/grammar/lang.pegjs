@@ -17,7 +17,7 @@
     enum: 7,
     match: 8,
     self: 9,
-    this: 10,
+    whitespace: 10,
     call: 11,
     array: 12,
     identifier: 13,
@@ -32,9 +32,8 @@
     optional: 22,
     element: 23,
     comment: 24,
-    whitespace: 25,
-    tuple: 26,
-    declare: 27,
+    tuple: 25,
+    declare: 26,
   };
   
   function buildBinaryExpression(head, tail, operator, right) {
@@ -204,8 +203,7 @@ SharpComment
   }
 
 Keyword
-  = ThisToken
-  / SelfToken
+  = SelfToken
   / EnumToken
   / MatchToken
   / CaseToken
@@ -277,7 +275,6 @@ UnicodeDigit
 NullToken       = "null"       !IdentifierPart
 TrueToken       = "true"       !IdentifierPart
 FalseToken      = "false"      !IdentifierPart
-ThisToken       = "this"       !IdentifierPart
 SelfToken       = "self"       !IdentifierPart
 EnumToken       = "enum"       !IdentifierPart
 MatchToken      = "match"      !IdentifierPart
@@ -646,7 +643,6 @@ Arguments
     
 PrimaryExpression
   = id:Identifier { return { type: types.type, value: id }; }
-  / ThisToken { return { type: types.this }; }
   / SelfToken { return { type: types.self }; }
   / Literal
   / ArrayLiteral

@@ -37,6 +37,8 @@ const style: Style = {
     path: 'path',
     blank: 'comment',
     '...': 'spread',
+    typePath: 'typePath',
+    type: 'type',
 }
 
 export default style
