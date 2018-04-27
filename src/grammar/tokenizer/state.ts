@@ -43,7 +43,7 @@ enum State {
     pathStart,
     pathBody,
     pathBracketStart,
-    pathEnd,
+    pathBracketEnd,
 }
 
 export default State

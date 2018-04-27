@@ -1,6 +1,7 @@
 import * as lier from '../../src'
 import jsonschema2ast from '../../src/grammar/transform/jsonschema-ast'
 import ast2jsonschema from '../../src/grammar/transform/ast-jsonschema'
+import ast2slim from '../../src/grammar/transform/ast-slim'
 
 const base = lier.parse(`{
     a: ({
@@ -16,70 +17,25 @@ const base = lier.parse(`{
 
 
 console.time('parse')
-// console.log(lier.stringify(lier.deduction([
-//     {
-//         a: [
-//             // {
-//             //     b: '123',
-//             // },
-//             // {
-//             //     a: 1,
-//             //     b: '213',
-//             // },
-//             {
-//                 a: 1,
-//             },
-//             {
-//                 a: 1,
-//             }
-//         ]
-//     },
-//     {
-//         a: [
-//             // {
-//             //     b: '123',
-//             // },
-//             // {
-//             //     a: 1,
-//             //     b: '213',
-//             // },
-//             {
-//                 a: 1,
-//             },
-//             // {
-//             //     b: '123',
-//             // }
-//         ]
-//     }
-// ], base)))
-// console.log(lier.stringify(lier.deduction([
-//     {
-//         a: 1,
-//         b: '2'
-//     },
-//     {
-//         a: 1
-//     },
-//     {
-//         a: 2
-//     },
-// ])))
-// console.log(lier.stringify(lier.deduction([
-//     {
-//         a: 1,
-//         c: 'any'
-//     }
-// ], base)))
 
 const allLier = `
 type sf.a uint
+type sf.b str
 type B [
+    {
+        a: 1
+    },
     int?,
     ...str
 ]
 type A {
     a: uint
     b: A[]
+}
+type Sub {
+    a : sf.a | sf.b
+    b : self.regex * self.regex + 1
+    this : Sub[]
 }
 {
     @mock(1)
@@ -113,11 +69,7 @@ type A {
     never? : never
     @mockKey(1)
     $rest : any
-    sub : {
-        a : this.int | this.str
-        b : self.regex * self.regex + 1
-        this : this.sub
-    }[]
+    sub : Sub[]
     @mock(6)
     match : match self.regex {
         case 2 => 2 * 2
@@ -169,7 +121,7 @@ console.log(lier.validatex({
             b: [],
         }],
     },
-    B: [1, '2']
+    B: [{a:1},1, '2']
 }, allLier))
 
 const schemaAst = jsonschema2ast({
@@ -245,14 +197,16 @@ console.log(lier.validate({
     }
 }, schemaCompile.assignment, schemaCompile.declares))
 
+console.log(lier.stringify(lier.parse(allLier)))
 // console.log(JSON.stringify(ast2jsonschema(schemaAst), null, 4))
-
+lier.types['as'] = (name, type) => type
 const arrayTest = `
 type a.b 1
 [
     #aa
     'save',
     ['$', {
+        @as('ast')
         a: int
     }],
     a.b
@@ -261,5 +215,62 @@ type a.b 1
 console.log(lier.stringify(lier.parse(arrayTest)))
 
 console.log(lier.format(arrayTest))
+
+console.log(lier.stringify(lier.deduction([
+    {
+        a: [
+            // {
+            //     b: '123',
+            // },
+            // {
+            //     a: 1,
+            //     b: '213',
+            // },
+            {
+                a: 1,
+            },
+            {
+                a: 1,
+            }
+        ]
+    },
+    {
+        a: [
+            // {
+            //     b: '123',
+            // },
+            // {
+            //     a: 1,
+            //     b: '213',
+            // },
+            {
+                a: 1,
+            },
+            // {
+            //     b: '123',
+            // }
+        ]
+    }
+], base)))
+
+console.log(JSON.stringify(ast2slim(schemaAst), null, 4))
+// console.log(lier.stringify(lier.deduction([
+//     {
+//         a: 1,
+//         b: '2'
+//     },
+//     {
+//         a: 1
+//     },
+//     {
+//         a: 2
+//     },
+// ])))
+// console.log(lier.stringify(lier.deduction([
+//     {
+//         a: 1,
+//         c: 'any'
+//     }
+// ], base)))
 
 console.timeEnd('parse')

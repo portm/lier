@@ -10,11 +10,6 @@ const decorates = [
         displayText: 'mockKey',
     },
     {
-        select: [2, 2],
-        text: '_(\'\')',
-        displayText: 'description',
-    },
-    {
         select: [1, 1],
         text: 'range()',
         displayText: 'range',
