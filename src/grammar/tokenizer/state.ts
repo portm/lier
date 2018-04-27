@@ -1,8 +1,9 @@
 enum State {
     expressionStart,
-    expression,
-    expressionList,
-    expressionListStart,
+    expressionBody,
+    element,
+    declareStart,
+    declare,
     property,
     propertyName,
     propertyValue,
@@ -17,7 +18,7 @@ enum State {
     groupStart,
     group,
     argumentStart,
-    argument,
+    argumentEnd,
     array,
     memberStart,
     member,
@@ -25,7 +26,7 @@ enum State {
     memberBracket,
     primary,
     enumStart,
-    enum,
+    enumBody,
     enumEnd,
     matchStart,
     match,
@@ -38,6 +39,11 @@ enum State {
     unary,
     spread,
     optional,
+    whitespace,
+    pathStart,
+    pathBody,
+    pathBracketStart,
+    pathEnd,
 }
 
 export default State

@@ -16,7 +16,6 @@ const operatorRegex = new RegExp('^(?:' + [
 const tokenizer = (style: Style) => {
     const table: Table = {
         router: (stream, context) => {
-            // console.log(context.state.map(i => State[i]), stream.peek())
             const state = context.state[context.state.length - 1]
             const handle = table[state]
 
@@ -40,7 +39,7 @@ const tokenizer = (style: Style) => {
         [State.start]: (stream, context) => {
             context.state.pop()
             context.state.push(State.error)
-            context.state.push(State.expressionStart)
+            context.state.push(State.element)
             return table.router(stream, context)
         },
 
@@ -49,7 +48,7 @@ const tokenizer = (style: Style) => {
             if (stream.match(blank)) {
                 return style.blank
             }
-            const comment = /^(?:#.*|\/\/.*)+/
+            const comment = /^#.*/
             if (stream.match(comment)) {
                 return style.comment
             }
@@ -62,6 +61,19 @@ const tokenizer = (style: Style) => {
             if (stream.match(mutil)) {
                 context.state.push(State.mutilEmpty)
                 return style.comment
+            }
+            return table.router(stream, context)
+        },
+
+        [State.whitespace]: (stream, context) => {
+            const blank = /^\s+/
+            if (stream.match(blank)) {
+                return style.blank
+            }
+            context.state.pop()
+            if (stream.eol()) {
+                context.state.push(State.empty)
+                return style.blank
             }
             return table.router(stream, context)
         },
@@ -101,37 +113,110 @@ const tokenizer = (style: Style) => {
             return table.router(stream, context)
         },
 
-        [State.expressionListStart]: (stream, context) => {
+        [State.element]: (stream, context) => {
             context.state.pop()
-            context.state.push(State.expressionList)
             context.state.push(State.expressionStart)
+            context.state.push(State.empty)
+            context.state.push(State.declareStart)
+            context.state.push(State.empty)
             return table.router(stream, context)
         },
 
-        [State.expressionList]: (stream, context) => {
-            if (stream.peek() === ',') {
-                context.state.push(State.expressionStart)
+        [State.declareStart]: (stream, context) => {
+            context.state.pop()
+            const type = /^type(?=\s|$)/
+            if (stream.match(type)) {
+                context.state.push(State.declareStart)
+                context.state.push(State.empty)
+                context.state.push(State.primary)
+                context.state.push(State.whitespace)
+                context.state.push(State.pathStart)
+                context.state.push(State.whitespace)
+                return style.type
+            }
+            return table.router(stream, context)
+        },
+
+        [State.pathStart]: (stream, context) => {
+            context.state.pop()
+            context.state.push(State.pathBody)
+            context.state.push(State.whitespace)
+            context.state.push(State.identifier)
+            return table.router(stream, context)
+        },
+
+        [State.pathBody]: (stream, context) => {
+            const peek = stream.peek()
+            context.state.pop()
+
+            if (peek === '.') {
+                context.state.push(State.pathBody)
+                context.state.push(State.whitespace)
+                context.state.push(State.identifier)
+                context.state.push(State.whitespace)
                 stream.next()
-                return style[',']
+                return style['.']
             }
 
+            if (peek === '[') {
+                context.state.push(State.pathBracketStart)
+                context.state.push(State.whitespace)
+                stream.next()
+                return style.arrayStart
+            }
+            return table.router(stream, context)
+        },
+
+        [State.pathBracketStart]: (stream, context) => {
+            const peek = stream.peek()
             context.state.pop()
+            if (peek === '\'' || peek === '"') {
+                context.backed = false
+                context.string = peek
+                context.style = style.string
+                context.state.push(State.string)
+                return table.router(stream, context)
+            }
+
+            if (peek === '`') {
+                context.backed = false
+                context.style = style.string
+                context.state.push(State.backtickString)
+                stream.next()
+                return style.string
+            }
+
+            const regex = /^\/(?:[^\/\\]*|\\.)+\/([im]*)/
+            if (stream.match(regex)) {
+                return style.regex
+            }
+
+            const number = /[\d.]/
+            if (number.test(peek)) {
+                context.style = style.number
+                context.state.push(State.number)
+                return table.router(stream, context)
+            }
+
+            ++ context.commitIndent
+            context.state.pop()
+            context.state.pop()
+            context.state.push(State.array)
             return table.router(stream, context)
         },
 
         [State.expressionStart]: (stream, context) => {
             context.state.pop()
-            context.state.push(State.expression)
-            context.state.push(State.empty)
+            context.state.push(State.expressionBody)
+            context.state.push(State.whitespace)
             context.state.push(State.unary)
-            context.state.push(State.empty)
             return table.router(stream, context)
         },
 
-        [State.expression]: (stream, context) => {
+        [State.expressionBody]: (stream, context) => {
             if (stream.match(operatorRegex)) {
-                context.state.push(State.expression)
-                context.state.push(State.empty)
+                context.state.push(State.expressionBody)
+                context.state.push(State.whitespace)
                 context.state.push(State.unary)
                 return style.operator
             }
@@ -145,18 +230,18 @@ const tokenizer = (style: Style) => {
                     try {
                         new RegExp(match[1], match[2] || '')
                     } catch (exp) {
-                        context.state.push(State.expression)
-                        context.state.push(State.empty)
+                        context.state.push(State.expressionBody)
+                        context.state.push(State.whitespace)
                         context.state.push(State.unary)
-                        context.state.push(State.empty)
+                        context.state.push(State.whitespace)
                         stream.next()
                         return style.operator
                     }
                 } else {
-                    context.state.push(State.expression)
-                    context.state.push(State.empty)
+                    context.state.push(State.expressionBody)
+                    context.state.push(State.whitespace)
                     context.state.push(State.unary)
-                    context.state.push(State.empty)
+                    context.state.push(State.whitespace)
                     stream.next()
                     return style.operator
                 }
@@ -173,7 +258,7 @@ const tokenizer = (style: Style) => {
             if (peek === '[') {
                 ++ context.commitIndent
                 context.state.push(State.array)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style.arrayStart
             }
@@ -181,7 +266,7 @@ const tokenizer = (style: Style) => {
             if (peek === '(') {
                 ++ context.commitIndent
                 context.state.push(State.groupStart)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style.groupStart
             }
@@ -212,7 +297,6 @@ const tokenizer = (style: Style) => {
 
             const regex = /^\/(?:[^\/\\]*|\\.)+\/([im]*)/
             if (stream.match(regex)) {
-                context.state.push(State.empty)
                 return style.regex
             }
 
@@ -227,6 +311,7 @@ const tokenizer = (style: Style) => {
             if (stream.match(match)) {
                 context.state.push(State.matchStart)
                 context.state.push(State.expressionStart)
+                context.state.push(State.empty)
                 return style.match
             }
 
@@ -260,7 +345,7 @@ const tokenizer = (style: Style) => {
         [State.memberStart]: (stream, context) => {
             context.state.pop()
             context.state.push(State.member)
-            context.state.push(State.empty)
+            context.state.push(State.whitespace)
             context.state.push(State.primary)
             return table.router(stream, context)
         },
@@ -270,9 +355,9 @@ const tokenizer = (style: Style) => {
 
             if (peek === '.') {
                 context.style = style.path
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 context.state.push(State.identifier)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style['.']
             }
@@ -280,7 +365,7 @@ const tokenizer = (style: Style) => {
             if (peek === '[') {
                 ++ context.commitIndent
                 context.state.push(State.memberBracketStart)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style.memberStart
             }
@@ -288,7 +373,7 @@ const tokenizer = (style: Style) => {
             if (peek === '(') {
                 ++ context.commitIndent
                 context.state.push(State.argumentStart)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style.groupStart
             }
@@ -303,14 +388,14 @@ const tokenizer = (style: Style) => {
 
             if (peek === ']') {
                 -- context.commitIndent
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style.memberEnd
             }
 
             context.state.push(State.memberBracket)
-            context.state.push(State.empty)
-            context.state.push(State.expressionListStart)
+            context.state.push(State.whitespace)
+            context.state.push(State.expressionStart)
             return table.router(stream, context)
         },
 
@@ -320,7 +405,7 @@ const tokenizer = (style: Style) => {
             if (peek === ']') {
                 -- context.commitIndent
                 context.state.pop()
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style.arrayEnd
             }
@@ -354,7 +439,7 @@ const tokenizer = (style: Style) => {
             if (stream.match(/[a-zA-Z$_][-a-zA-Z0-9$_]*/)) {
                 context.state.pop()
                 context.state.push(State.decorate)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 return style.decorate
             }
 
@@ -368,7 +453,7 @@ const tokenizer = (style: Style) => {
             if (stream.peek() === '(') {
                 ++ context.commitIndent
                 context.state.push(State.argumentStart)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 stream.next()
                 return style.groupStart
             }
@@ -400,7 +485,6 @@ const tokenizer = (style: Style) => {
 
             const regex = /^\/(?:[^\/\\]*|\\.)+\/([im]*)/
             if (stream.match(regex)) {
-                context.state.push(State.empty)
                 return style.key.regex
             }
 
@@ -429,7 +513,7 @@ const tokenizer = (style: Style) => {
         [State.propertyOptional]: (stream, context) => {
             context.state.pop()
             context.state.push(State.propertyValue)
-            context.state.push(State.empty)
+            context.state.push(State.whitespace)
 
             if (stream.peek() === '?') {
                 stream.next()
@@ -455,7 +539,6 @@ const tokenizer = (style: Style) => {
             const regex = /^[$a-zA-Z_][A-Za-z0-9$_-]*/
             if (stream.match(regex)) {
                 context.state.pop()
-                context.state.push(State.empty)
                 return context.style
             }
 
@@ -467,7 +550,6 @@ const tokenizer = (style: Style) => {
             const regex = /^(?:0[xX][\da-fA-F]+|\d+\.?|\d*\.\d+(?:[eE]\d+)?)/
             if (stream.match(regex)) {
                 context.state.pop()
-                context.state.push(State.empty)
                 return context.style
             }
 
@@ -481,7 +563,6 @@ const tokenizer = (style: Style) => {
                 context.string = ''
                 context.backed = true
                 context.state.pop()
-                context.state.push(State.empty)
                 return context.style
             }
 
@@ -498,7 +579,6 @@ const tokenizer = (style: Style) => {
                 context.backed = true
                 stream.next()
                 context.state.pop()
-                context.state.push(State.empty)
                 return context.style
             }
             if (stream.eol()) {
@@ -512,8 +592,8 @@ const tokenizer = (style: Style) => {
         [State.groupStart]: (stream, context) => {
             context.state.pop()
             context.state.push(State.group)
-            context.state.push(State.empty)
-            context.state.push(State.expressionListStart)
+            context.state.push(State.whitespace)
+            context.state.push(State.expressionStart)
             return table.router(stream, context)
         },
 
@@ -523,7 +603,6 @@ const tokenizer = (style: Style) => {
             if (peek === ')') {
                 -- context.commitIndent
                 context.state.pop()
-                context.state.push(State.empty)
                 stream.next()
                 return style.groupEnd
             }
@@ -534,30 +613,35 @@ const tokenizer = (style: Style) => {
 
         [State.argumentStart]: (stream, context) => {
             context.state.pop()
-
-            if (stream.peek() === ')') {
-                -- context.commitIndent
-                context.state.push(State.empty)
-                stream.next()
-                return style.groupEnd
-            }
-
-            context.state.push(State.argument)
-            context.state.push(State.empty)
-            context.state.push(State.expressionListStart)
-            return table.router(stream, context)
-        },
-
-        [State.argument]: (stream, context) => {
             const peek = stream.peek()
             if (peek === ')') {
                 -- context.commitIndent
-                context.state.pop()
-                context.state.push(State.empty)
                 stream.next()
                 return style.groupEnd
             }
+            context.state.push(State.argumentEnd)
+            context.state.push(State.whitespace)
+            context.state.push(State.expressionStart)
+            return table.router(stream, context)
+        },
 
+        [State.argumentEnd]: (stream, context) => {
+            context.state.pop()
+            const peek = stream.peek()
+            if (peek === ',') {
+                context.state.push(State.argumentEnd)
+                context.state.push(State.whitespace)
+                context.state.push(State.expressionStart)
+                context.state.push(State.whitespace)
+                stream.next()
+                return style[',']
+            }
+            if (peek === ')') {
+                -- context.commitIndent
+                context.state.push(State.whitespace)
+                stream.next()
+                return style.groupEnd
+            }
             context.state.push(State.error)
             return table.router(stream, context)
         },
@@ -568,7 +652,6 @@ const tokenizer = (style: Style) => {
             if (peek === ']') {
                 -- context.commitIndent
                 context.state.pop()
-                context.state.push(State.empty)
                 stream.next()
                 return style.arrayEnd
             }
@@ -581,6 +664,7 @@ const tokenizer = (style: Style) => {
             context.state.pop()
             context.state.push(State.array)
             context.state.push(State.spread)
+            context.state.push(State.empty)
             return table.router(stream, context)
         },
 
@@ -600,7 +684,6 @@ const tokenizer = (style: Style) => {
             context.state.pop()
             if (stream.peek() === '?') {
                 stream.next()
-                context.state.push(State.empty)
                 return style['?']
             }
             return table.router(stream, context)
@@ -612,7 +695,7 @@ const tokenizer = (style: Style) => {
             if (peek === '{') {
                 ++ context.commitIndent
                 context.state.pop()
-                context.state.push(State.enum)
+                context.state.push(State.enumBody)
                 context.state.push(State.empty)
                 stream.next()
                 return style.blockStart
@@ -622,30 +705,37 @@ const tokenizer = (style: Style) => {
             return table.router(stream, context)
         },
 
-        [State.enum]: (stream, context) => {
+        [State.enumBody]: (stream, context) => {
             const peek = stream.peek()
             context.state.pop()
 
             if (peek === '}') {
                 -- context.commitIndent
-                context.state.push(State.empty)
                 stream.next()
                 return style.blockEnd
             }
 
             context.state.push(State.enumEnd)
             context.state.push(State.empty)
-            context.state.push(State.expressionListStart)
+            context.state.push(State.expressionStart)
             return table.router(stream, context)
         },
 
         [State.enumEnd]: (stream, context) => {
             const peek = stream.peek()
+            context.state.pop()
+
+            if (peek === ',') {
+                context.state.push(State.enumEnd)
+                context.state.push(State.empty)
+                context.state.push(State.expressionStart)
+                context.state.push(State.empty)
+                stream.next()
+                return style[',']
+            }
 
             if (peek === '}') {
                 -- context.commitIndent
-                context.state.pop()
-                context.state.push(State.empty)
                 stream.next()
                 return style.blockEnd
             }
@@ -676,7 +766,6 @@ const tokenizer = (style: Style) => {
             if (peek === '}') {
                 -- context.commitIndent
                 context.state.pop()
-                context.state.push(State.empty)
                 stream.next()
                 return style.blockEnd
             }
@@ -684,9 +773,9 @@ const tokenizer = (style: Style) => {
             const regex = /^case(?=\s|$)/
             if (stream.match(regex)) {
                 context.state.push(State.matchValue)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 context.state.push(State.expressionStart)
-                context.state.push(State.empty)
+                context.state.push(State.whitespace)
                 return style.case
             }
 

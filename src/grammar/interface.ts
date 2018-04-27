@@ -51,10 +51,6 @@ export interface NumberNode extends Node {
     value: number
 }
 
-export interface ThisNode extends Node {
-    type: 10
-}
-
 export interface SelfNode extends Node {
     type: Type.self
 }
