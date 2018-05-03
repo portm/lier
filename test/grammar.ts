@@ -22,13 +22,13 @@ export = (it) => {
     test('base type string',
     'string'
     , `
-    string
+    str
     `)
 
     test('base type string error',
     1,
     `
-    string
+    str
     `,
     [ { path: [], message: [ 1, 'is not string' ] } ])
 
@@ -36,7 +36,7 @@ export = (it) => {
         a: 'string',
     }, `
     {
-        a: string
+        a: str
     }
     `)
 
@@ -45,15 +45,15 @@ export = (it) => {
         false: false,
     }, `
     {
-        true: boolean
-        false: boolean
+        true: bool
+        false: bool
     }
     `)
 
     test('base type boolean error',
     'true',
     `
-    boolean
+    bool
     `,
     [ { path: [], message: [ 'true', 'is not boolean' ] } ])
 
@@ -370,10 +370,10 @@ export = (it) => {
         i64: 65536,
     }, `
     {
-        i8: i8
-        i16: i16
-        i32: i32
-        i64: i64
+        i8: int8
+        i16: int16
+        i32: int32
+        i64: int64
     }
     `)
 
@@ -685,16 +685,18 @@ export = (it) => {
         },
     },
     `
+    type a {
+        a : int
+    }
+    type d {
+        b : true
+    }
     {
-        a: {
-            a : int
-        }
+        a: a
         b: {
-            c: this.a | this.b.d
-            d: {
-                b : true
-            }
-            e: this.a.a
+            c: a | d
+            d: d
+            e: a.a
         }
     }
     `)
@@ -709,16 +711,18 @@ export = (it) => {
         },
     },
     `
+    type a {
+        a : int
+    }
+    type d {
+        b : true
+    }
     {
-        a: {
-            a : int
-        }
+        a: a
         b: {
-            c: this.a | this.b.d
-            d: {
-                b : true
-            }
-            e: this.a.a
+            c: a | d
+            d: d
+            e: a.a
         }
     }
     `)
@@ -733,16 +737,18 @@ export = (it) => {
         },
     },
     `
+    type a {
+        a : int
+    }
+    type d {
+        b : true
+    }
     {
-        a: {
-            a : int
-        }
+        a: a
         b: {
-            c: this.a | this.b.d
-            d: {
-                b : true
-            }
-            e: this.a.a
+            c: a | d
+            d: d
+            e: a.a
         }
     }
     `,
@@ -885,10 +891,21 @@ export = (it) => {
         sub: [{
             a: 2,
             b: 5,
-            this: [],
+            this: [{
+                a: 2,
+                b: 5,
+                this: 1,
+            }],
         }],
         match: 4,
     }, `
+    type Int int
+    type Str str
+    type Sub {
+        a : Int | Str
+        b : self.regex * self.regex + 1
+        this : Sub[] | int
+    }
     {
         @mock(1)
         regex : /^\\d$/
@@ -917,11 +934,7 @@ export = (it) => {
         any : any
         never? : never
         $rest : any
-        sub : {
-            a : this.int | this.str
-            b : self.regex * self.regex + 1
-            this : this.sub | int
-        }[]
+        sub : Sub[]
         match : match self.regex {
             case 2 => 2 * 2
             case any => 3 * 2

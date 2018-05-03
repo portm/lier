@@ -36,14 +36,13 @@ export = (it) => {
             a: str,
             b: uint,
         }),
-        f: ref('d'),
+        f: {
+            a: str
+        },
         g: /\d+/,
         h: eq(/\d+/),
         [<any> /sss/]: int,
         $rest: mockKey('1', '2', '3', int),
-        $definitions: {
-            a: str,
-        },
     })
 
     test('basic 3', {

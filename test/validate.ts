@@ -265,19 +265,6 @@ export = (it) => {
         }]),
     }, [ { path: [ 'b' ], message: [ 'ok', 'is not', 'sss' ] } ])
 
-    test('$definitions', {
-        a: 1,
-        b: 2,
-    }, {
-        a: ref('$definitions.k'),
-        $definitions: {
-            s: int,
-            k: str,
-        },
-    },
-    [
-        { path: ['a'], message: [1, 'is not string'] },
-    ])
 
     test('@range1',
         { a: 10 },
