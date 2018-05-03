@@ -113,15 +113,15 @@ console.log(lier.validatex({
         }
     ],
     "match": 4,
-    sf: 1,
-    A: {
-        a: 1,
-        b: [{
-            a: 1,
-            b: [],
-        }],
+    "sf": 1,
+    "A": {
+        "a": 1,
+        "b": [{
+            "a": 1,
+            "b": [],
+        }]
     },
-    B: [{a:1},1, '2']
+    "B": [{"a":1},1, "2"]
 }, allLier))
 
 const schemaAst = jsonschema2ast({
@@ -272,5 +272,40 @@ console.log(JSON.stringify(ast2slim(schemaAst), null, 4))
 //         c: 'any'
 //     }
 // ], base)))
+
+console.log(lier.validatex([
+    {
+        "userId": 1,
+        "userName": "test1",
+        "displayName": "people a",
+        "childrens": [
+            {
+                "userId": 3,
+                "userName": "test3",
+                "childrens": [
+                    {
+                        "userId": 5,
+                        "userName": "test5"
+                    }
+                ]
+            },
+            {
+                "userId": 4,
+                "userName": "test4",
+                "displayName": "people d"
+            }
+        ]
+    },
+    {
+        "userId": 2,
+        "userName": "test2"
+    }
+], `type UserInfo {
+    userId: int
+    userName: str
+    displayName?: str
+    childrens?: UserInfo[]
+}
+UserInfo[]`))
 
 console.timeEnd('parse')

@@ -1,4 +1,4 @@
-<h1 class="third" id="Lier">Lier 类型语言简介</h1>
+<h1 class="third" id="lier">Lier 类型语言简介</h1>
 
     Lier 是一套针对 json 的类型描述系统，它用一套和 json 很像但是更简单的语法来描述 json 的格式
     在程序设计里，Lier 更像是 interface
@@ -85,15 +85,17 @@
 它对应的语法为
 
 ```js
-{
+type UserInfo {
     userId: int
     userName: str
     displayName?: str
-    childrens?: this[0][]
-}[]
+    childrens?: UserInfo[]
+}
+UserInfo[]
 ```
 
-```this``` 代表定义的根部，即 ```{...}[]``` 所以 ```this[0]``` 可以取到第一个定义
+使用 ```type``` 关键字 声明类型 ```UserInfo``` 其结果为对象类型<br>
+注: 最后一行不能为声明，即必须是一个 ```定义``` 或 ```引用```
 
 一个多类型多数组描述
 
@@ -139,7 +141,7 @@
 ```a | b``` 代表 a 或者 b 都可以<br>
 key 对应的 value 可以是类型也可以是具体的值，本例中 ```type``` 的 value 就是一个值
 
-<h1 class="third" id="Type">类型</h1>
+<h1 class="third" id="type">类型</h1>
 
 ## 基础类型
 
@@ -226,30 +228,6 @@ key 对应的 value 可以是类型也可以是具体的值，本例中 ```type`
 ### 正则类型
 
     /tester/i
-
-### this 关键字
-
-    类型的根
-
-```json
-{
-    "a": 1,
-    "b": {
-        "c": 2
-    }
-}
-```
-
-它对应的语法为
-
-```js
-{
-    a: int
-    b: {
-        c: this.a
-    }
-}
-```
 
 ### self 关键字
 
@@ -501,28 +479,6 @@ oneOf({
 }
 ```
 
-#### $definitions
-
-    definitions 很像变量，它在校验的时候，会被忽略 (注：忽略是指不校验 definitions 这个 key)
-    这样我们就可以通过 this 关键字等特性把一些通用的东西放到这里，然后引用它
-
-```json
-{
-    "a": 1,
-    "b": 2
-}
-```
-
-它对应的语法为
-
-```js
-{
-    $definitions: int
-    a: this.$definitions
-    b: this.$definitions
-}
-```
-
 #### $rest
 
     当所有 key 都没有匹配到的时候，会进入 $rest 这个 key
@@ -561,28 +517,6 @@ oneOf({
 }
 ```
 
-#### $export
-
-    当这个 key 存在时，整个对象的类型将被视为此 key 对应的 value
-
-```json
-{
-    "a": 1,
-    "b": 2
-}
-```
-
-它对应的语法为
-
-```js
-{
-    $export: {
-        a: int
-        b: int
-    }
-}
-```
-
 ## 可选
 
 在关键字后面加 ```?``` 就代表这个 key 是可选的
@@ -611,25 +545,6 @@ oneOf({
 }
 ```
 
-### @_ 或者 @description
-
-    属性的注释，除了文档的展示无实际效果
-
-```json
-{
-    "a": 1
-}
-```
-
-它对应的语法为
-
-```js
-{
-    @_(' 这是一个属性')
-    a: int
-}
-```
-
 ### mock
 
     存在 mock 时会优先使用 mock 的内容
@@ -639,6 +554,61 @@ oneOf({
 
     存在 mockKey 时会优先使用 mockKey 的内容
     有些无法 mock 的 NP 问题也需要 mockKey 装饰，比如 $rest 正则 key 等
+
+<h1 class="third" id="declare">声明</h1>
+
+    使用 type 关键字可声明类型，声明后，可直接使用名字来引用它
+
+一个简单的例子
+
+```json
+[
+    {
+        "userId": 1,
+        "userName": "test1",
+        "displayName": "people a"
+    },
+    {
+        "userId": 2,
+        "userName": "test2"
+    }
+]
+```
+
+它对应的语法为
+
+```js
+type UserInfo {
+    userId: int
+    userName: str
+    displayName?: str
+}
+
+UserInfo[]
+```
+注: 最后一行不能为声明，即必须是一个 ```定义``` 或 ```引用```
+
+
+<h1 class="third" id="comment">注释</h1> 
+
+    注释必须紧跟 声明、枚举元素、对象属性、match case、tuple 元素 前后<br>
+    单行注释以 # 开头，多行注释以 /* 开头 */ 结束
+
+注: 当出现在对象属性前后时，不能穿插在 ```@``` 中，必须紧跟属性<br>
+
+一个简单的例子
+
+```js
+# 用户信息
+type UserInfo {
+    # 用户 id
+    userId: int
+    userName: str
+    displayName?: str
+}
+# 用户信息数组
+UserInfo[]
+```
 
 <h1 class="third" id="type_demo">完整的例子</h1> 
 
@@ -664,22 +634,55 @@ oneOf({
         {
             "a": 2,
             "b": 5,
-            "this": []
+            "this": [
+                {
+                    "a": 2,
+                    "b": 5,
+                    "this": []
+                }
+            ]
         }
     ],
-    "match": 4
+    "match": 4,
+    "sf": 1,
+    "A": {
+        "a": 1,
+        "b": [{
+            "a": 1,
+            "b": [],
+        }]
+    },
+    "B": [{"a":1},1, "2"]
 }
 ```
 
 它对应的语法为
 
 ```js
+type sf.a uint
+type sf.b str
+type B [
+    {
+        a: 1
+    },
+    int?,
+    ...str
+]
+type A {
+    a: uint
+    b: A[]
+}
+type Sub {
+    a : sf.a | sf.b
+    b : self.regex * self.regex + 1
+    this : Sub[]
+}
 {
     @mock(1)
-    regex : /^\d$/
+    regex : /^\\d$/
     /regex1/ : int
-    @description('a')
-    @description("b")
+    # a
+    # b
     oct : 066
     dec : 66
     hex : 0xff
@@ -694,26 +697,28 @@ oneOf({
     @mock(2)
     @mock(1)
     enum : enum {
+        # 1
         1, 2
     }
     @mock(3)
     allOf : int & uint
     anyOf : int | str
-    @_('any 匹配任何东西')
+    # any 匹配任何东西
     any : any
-    @_('never 不匹配任何东西')
+    # never 不匹配任何东西
     never? : never
     @mockKey(1)
     $rest : any
-    sub : {
-        a : this.int | this.str
-        b : self.regex * self.regex + 1
-        this : this.sub[]
-    }[]
+    sub : Sub[]
     @mock(6)
     match : match self.regex {
         case 2 => 2 * 2
         case any => 3 * 2
     }
+    sf: sf.a
+    A: A
+    B: B
+    @range(10, 15)
+    C?: int
 }
 ```
