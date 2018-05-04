@@ -135,7 +135,7 @@ const visitor: Visitor = {
         }
     },
     [Type.member]: function (node, context) {
-        if (node.object.type === Type.type) {
+        if (node.object.type === Type.identifier) {
             return {
                 $ref: `#/definitions/${node.object.value}/${node.properties.map(path => path.value).join('/')}`
             }
@@ -319,9 +319,6 @@ const visitor: Visitor = {
         return {}
     },
     [Type.identifier]: function (node, context) {
-        return node.value
-    },
-    [Type.type]: function (node, context) {
         if (node.value === 'never') {
             return false
         }

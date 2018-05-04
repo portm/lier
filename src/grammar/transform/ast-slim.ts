@@ -13,7 +13,7 @@ interface Table {
 
 export const slimTypes = {
     unary: 'unary',
-    type: 'type',
+    identifier: 'identifier',
     oneOf: 'oneOf',
     anyOf: 'anyOf',
     allOf: 'allOf',
@@ -61,22 +61,26 @@ const table: Table = {
     },
     [Type.member]: (node, context) => {
         return {
-            type: slimTypes.type,
+            type: slimTypes.identifier,
             path: [node.object].concat(node.properties).map(prop => {
-                if (
-                    prop.type !== Type.type &&
-                    prop.type !== Type.null &&
-                    prop.type !== Type.boolean &&
-                    prop.type !== Type.number &&
-                    prop.type !== Type.string &&
-                    prop.type !== Type.identifier &&
-                    prop.type !== Type.regular
-                ) {
-                    return table.router(prop, context)
-                }
-                return prop.value
+                return table.router(prop, context)
             })
         }
+    },
+    [Type.path]: (node, context) => {
+        const prop = node.value
+        if (
+            node.computed ||
+            prop.type !== Type.null &&
+            prop.type !== Type.boolean &&
+            prop.type !== Type.number &&
+            prop.type !== Type.string &&
+            prop.type !== Type.identifier &&
+            prop.type !== Type.regular
+        ) {
+            return table.router(prop, context)
+        }
+        return prop.value
     },
     [Type.binary]: (node, context) => {
         const operator = node.operator
@@ -147,7 +151,6 @@ const table: Table = {
                         name: decorate.name,
                         arguments: decorate.arguments.map(arg => {
                             if (
-                                arg.type !== Type.type &&
                                 arg.type !== Type.null &&
                                 arg.type !== Type.boolean &&
                                 arg.type !== Type.number &&
@@ -184,7 +187,6 @@ const table: Table = {
                 continue
             }
             if (
-                arg.type !== Type.type &&
                 arg.type !== Type.null &&
                 arg.type !== Type.boolean &&
                 arg.type !== Type.number &&
@@ -272,14 +274,14 @@ const table: Table = {
             value: node.value,
         }
     },
-    [Type.type]: (node, context) => {
+    [Type.identifier]: (node, context) => {
         if (types[node.value]) {
             return {
                 type: node.value,
             }
         }
         return {
-            type: slimTypes.type,
+            type: slimTypes.identifier,
             path: [node.value],
         }
     },
@@ -329,7 +331,6 @@ const table: Table = {
         return {
             path: node.path.map(path => {
                 if (
-                    path.type !== Type.type &&
                     path.type !== Type.null &&
                     path.type !== Type.boolean &&
                     path.type !== Type.number &&

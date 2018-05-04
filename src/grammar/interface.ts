@@ -17,14 +17,14 @@ export enum Type {
     number,
     string,
     regular,
-    type,
+    tuple,
     case,
     rest,
     optional,
     element,
     comment,
-    tuple,
     declare,
+    path,
 }
 
 export interface Node {
@@ -67,11 +67,6 @@ export interface DeclareNode extends Node {
 
 export interface IdentifierNode extends Node {
     type: Type.identifier
-    value: string
-}
-
-export interface TypeNode extends Node {
-    type: Type.type
     value: string
 }
 
@@ -144,7 +139,7 @@ export interface UnaryNode extends Node {
 
 export interface ElementNode extends Node {
     type: Type.element
-    declarations: TypeNode[]
+    declarations: DeclareNode[]
     assignment: Node
 }
 

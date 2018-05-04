@@ -59,9 +59,9 @@ const utils = {
         }
         return utils.spreadMember(node.left, operator).concat(utils.spreadMember(node.right, operator))
     },
-    makeType: (node): lier.TypeNode => {
+    makeType: (node): lier.IdentifierNode => {
         return {
-            type: Type.type,
+            type: Type.identifier,
             value: node,
         }
     }

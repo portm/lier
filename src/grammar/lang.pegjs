@@ -26,14 +26,14 @@
     number: 16,
     string: 17,
     regular: 18,
-    type: 19,
+    tuple: 19,
     case: 20,
     rest: 21,
     optional: 22,
     element: 23,
     comment: 24,
-    tuple: 25,
-    declare: 26,
+    declare: 25,
+    path: 26,
   };
   
   function buildBinaryExpression(head, tail, operator, right) {
@@ -100,7 +100,7 @@ TypeDeclaration
     tail:(
       ___
       (
-        "." ___ attr:Identifier { return { type: types.identifier, value: attr }; }
+        "." ___ attr:Identifier { return attr; }
         /
         "[" ___ attr:(StringLiteral / NullLiteral / BooleanLiteral / NumericLiteral) ___ "]" { return attr; }
       )
@@ -108,7 +108,7 @@ TypeDeclaration
     ___ value:PrimaryExpression {
     return {
       type: types.declare,
-      path: buildList({ type: types.identifier, value: head }, tail, 1),
+      path: buildList(head, tail, 1),
       value: value,
     };
   }
@@ -209,7 +209,7 @@ Keyword
   / CaseToken
 
 Identifier
-  = !ReservedWord name:IdentifierName { return name; }
+  = !ReservedWord name:IdentifierName { return { type: types.identifier, value: name }; }
 
 ReservedWord
   = Keyword
@@ -581,14 +581,22 @@ MemberExpression
         }
       / "[" ___ property:Expression ___ "]" {
           return {
-            property: property,
+            property: {
+              type: types.path,
+              value: property,
+              computed: true,
+            }
           };
         }
       / "." ___ property:IdentifierName {
           return {
             property: {
-              type: types.identifier,
-              value: property,
+              type: types.path,
+              value: {
+                type: types.identifier,
+                value: property,
+              },
+              computed: false,
             },
           };
         }
@@ -642,7 +650,7 @@ Arguments
     }
     
 PrimaryExpression
-  = id:Identifier { return { type: types.type, value: id }; }
+  = Identifier
   / SelfToken { return { type: types.self }; }
   / Literal
   / ArrayLiteral
@@ -737,11 +745,11 @@ DecoratorList
   
 Decorator
   = "@"
-    name:Identifier ___ args:Arguments?
+    id:Identifier ___ args:Arguments?
     {
       return {
         type: types.decorator,
-        name : name,
+        name : id.value,
         arguments : optionalList(args),
       };
     }

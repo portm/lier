@@ -116,7 +116,7 @@ const table: Table = {
                 return ret
             })
         }
-        if (object.type !== Type.type || types.hasOwnProperty(object.value)) {
+        if (object.type !== Type.identifier || types.hasOwnProperty(object.value)) {
             let ret = table.router(object, context)
             for (const item of properties) {
                 ret = ret[item]
@@ -425,7 +425,16 @@ const table: Table = {
         return types.tuple(tuples)
     },
     [Type.identifier]: (node, context) => {
-        return node.value
+        if (!types.hasOwnProperty(node.value)) {
+            return types.definition([node.value])
+        }
+        return types[node.value]
+    },
+    [Type.path]: (node, context) => {
+        if (!node.computed && node.value.type === Type.identifier) {
+            return node.value.value
+        }
+        return table.router(node.value, context)
     },
     [Type.null]: (node, context) => {
         return null
@@ -441,12 +450,6 @@ const table: Table = {
     },
     [Type.regular]: (node, context) => {
         return node.value
-    },
-    [Type.type]: (node, context) => {
-        if (!types.hasOwnProperty(node.value)) {
-            return types.definition([node.value])
-        }
-        return types[node.value]
     },
     [Type.declare]: (node, context) => {
         _.set(context.declares, node.path.map(path => path.value), unpacking(table.router(node.value, context)))

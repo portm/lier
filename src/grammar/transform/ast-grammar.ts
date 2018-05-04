@@ -86,14 +86,7 @@ const table: Table = {
         }
         let ret = [object]
         for (const property of node.properties) {
-            if (property.type === Type.identifier) {
-                ret.push('.')
-                ret.push(table.router(property, context, indent + 1))
-            } else {
-                ret.push('[')
-                ret.push(table.router(property, context, indent + 1))
-                ret.push(']')
-            }
+            ret.push(table.router(property, context, indent + 1))
         }
         return ret.join('')
     },
@@ -212,6 +205,18 @@ const table: Table = {
     [Type.identifier]: (node, context, indent) => {
         return node.value
     },
+    [Type.path]: (node, context, indent) => {
+        const ret = []
+        if (node.computed) {
+            ret.push('[')
+            ret.push(table.router(node.value, context, indent))
+            ret.push(']')
+        } else {
+            ret.push('.')
+            ret.push(table.router(node.value, context, indent))
+        }
+        return ret.join('')
+    },
     [Type.null]: (node, context, indent) => {
         return null
     },
@@ -228,9 +233,6 @@ const table: Table = {
         return `'${node.value.replace(/'/g, '\\\'')}'`
     },
     [Type.regular]: (node, context, indent) => {
-        return node.value
-    },
-    [Type.type]: (node, context, indent) => {
         return node.value
     },
     [Type.rest]: (node, context, indent) => {

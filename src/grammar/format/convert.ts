@@ -100,14 +100,7 @@ const table: Table = {
     [Type.member]: (node, context) => {
         const members = [table.router(node.object, context)]
         for (const property of node.properties) {
-            if (property.type === Type.identifier) {
-                members.push(renderRange('.', style['.']))
-                members.push(renderRange(property.value, style.path))
-            } else {
-                members.push(renderRange('[', style.arrayStart))
-                members.push(table.router(property, context))
-                members.push(renderRange(']', style.arrayEnd))
-            }
+            members.push(table.router(property, context))
         }
         return members.join('')
     },
@@ -272,6 +265,22 @@ const table: Table = {
         }
         return renderRange(node.value, style.identifier)
     },
+    [Type.path]: (node, context) => {
+        const ret = []
+        if (node.computed) {
+            ret.push(renderRange('[', style.arrayStart))
+            ret.push(table.router(node.value, context))
+            ret.push(renderRange(']', style.arrayEnd))
+        } else {
+            ret.push(renderRange('.', style['.']))
+            if (node.value.type === Type.identifier) {
+                ret.push(renderRange(node.value.value, style.path))
+            } else {
+                ret.push(table.router(node.value, context))
+            }
+        }
+        return ret.join('')
+    },
     [Type.null]: (node, context) => {
         return renderRange(null, style.identifier)
     },
@@ -290,9 +299,6 @@ const table: Table = {
     },
     [Type.regular]: (node, context) => {
         return renderRange(node.value.source, context.inkey ? style.key.regex : style.regex)
-    },
-    [Type.type]: (node, context) => {
-        return renderRange(node.value, style.identifier)
     },
     [Type.rest]: (node, context) => {
         const tags = []
