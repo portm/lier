@@ -72,7 +72,13 @@ const convertor: Convertor = {
                 return null
             }
         }
-        return utils.makeType(integer ? 'int' : 'number')
+        if (integer) {
+            return utils.makeType('int')
+        }
+        if (utils.isLong(value)) {
+            return utils.makeType('long')
+        }
+        return utils.makeType('number')
     },
     boolean: (context: Context): lier.Node => {
         if (assertContext(context, 'Boolean')) {

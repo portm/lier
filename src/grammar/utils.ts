@@ -13,6 +13,10 @@ const utils = {
         value = +value
         return value <= utils.MAX_INTEGER && value >= utils.MIN_INTEGER && (value | 0) === value
     },
+    isLong: (value): boolean => {
+        value = +value
+        return value.toFixed(0) === value.toString()
+    },
     isNumber: (value): boolean => {
         return !isNaN(+value)
     },
