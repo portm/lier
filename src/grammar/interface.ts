@@ -61,7 +61,7 @@ export interface NullNode extends Node {
 
 export interface DeclareNode extends Node {
     type: Type.declare
-    path: string[]
+    path: Node[]
     value: Node
 }
 
@@ -84,7 +84,7 @@ export interface CallNode extends Node {
 export interface MatchNode extends Node {
     type: Type.match
     test: Node
-    cases: CaseNode[]
+    cases: Array<CaseNode | CommentNode>
 }
 
 export interface CaseNode extends Node {
@@ -100,7 +100,7 @@ export interface EnumNode extends Node {
 
 export interface ObjectNode extends Node {
     type: Type.object
-    properties: PropertyNode[]
+    properties: Array<PropertyNode | CommentNode>
 }
 
 export interface PropertyNode extends Node {
@@ -139,7 +139,7 @@ export interface UnaryNode extends Node {
 
 export interface ElementNode extends Node {
     type: Type.element
-    declarations: DeclareNode[]
+    declarations: Array<DeclareNode | CommentNode>
     assignment: Node
 }
 
