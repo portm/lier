@@ -134,16 +134,10 @@ const table: Table = {
         const rightFunctioned = right instanceof Function
 
         if (operator === '|') {
-            if (!leftFunctioned && !rightFunctioned && !isObject(left) && !isObject(right)) {
-                return left | right
-            }
             return types.anyOf(unpacking(left), unpacking(right))
         }
 
         if (operator === '&') {
-            if (!leftFunctioned && !rightFunctioned && !isObject(left) && !isObject(right)) {
-                return left & right
-            }
             return types.allOf(unpacking(left), unpacking(right))
         }
 
