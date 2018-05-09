@@ -82,7 +82,7 @@ Program
 
 SourceElements
   = declares:(
-    type:TypeDeclaration
+    type:TypeAssignment
     s1:__ {
       s1.unshift(type);
       return s1;
@@ -95,7 +95,7 @@ SourceElements
     };
   }
 
-TypeDeclaration
+TypeAssignment
   = TypeToken ___ head:Identifier
     tail:(
       ___
@@ -105,13 +105,36 @@ TypeDeclaration
         "[" ___ attr:(StringLiteral / NullLiteral / BooleanLiteral / NumericLiteral) ___ "]" { return attr; }
       )
     )*
-    ___ value:PrimaryExpression {
+    ___ value:TypeExpression {
     return {
       type: types.declare,
       path: buildList(head, tail, 1),
       value: value,
     };
   }
+
+TypeExpression
+  = TypeBitwiseORExpression
+
+TypeBitwiseORExpression
+  = head:TypeBitwiseANDExpression
+    tail:(___ BitwiseOROperator ___ TypeBitwiseANDExpression)*
+    { return buildBinaryExpression(head, tail, 1, 3); }
+
+TypeBitwiseANDExpression
+  = head:TypeUnaryExpression
+    tail:(___ BitwiseANDOperator ___ TypeUnaryExpression)*
+    { return buildBinaryExpression(head, tail, 1, 3); }
+
+TypeUnaryExpression
+  = operator:UnaryOperator ___ argument:TypeExpression {
+      return {
+        type: types.unary,
+        operator: operator,
+        argument: argument
+      };
+    }
+  / PrimaryExpression
 
 SourceCharacter
   = .
