@@ -27,6 +27,7 @@ enum State {
     primary,
     enumStart,
     enumBody,
+    enumItem,
     enumEnd,
     matchStart,
     match,

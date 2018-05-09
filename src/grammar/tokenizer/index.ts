@@ -737,7 +737,24 @@ const tokenizer = (style: Style) => {
 
             context.state.push(State.enumEnd)
             context.state.push(State.empty)
-            context.state.push(State.expressionStart)
+            context.state.push(State.enumItem)
+            context.state.push(State.whitespace)
+            context.state.push(State.identifier)
+            context.style = style.identifier
+            return table.router(stream, context)
+        },
+
+        [State.enumItem]: (stream, context) => {
+            const peek = stream.peek()
+            context.state.pop()
+
+            if (peek === '=') {
+                context.state.push(State.number)
+                context.state.push(State.whitespace)
+                context.style = style.number
+                stream.next()
+                return style['=']
+            }
             return table.router(stream, context)
         },
 
@@ -748,7 +765,9 @@ const tokenizer = (style: Style) => {
             if (peek === ',') {
                 context.state.push(State.enumEnd)
                 context.state.push(State.empty)
-                context.state.push(State.expressionStart)
+                context.state.push(State.enumItem)
+                context.state.push(State.whitespace)
+                context.state.push(State.identifier)
                 context.state.push(State.empty)
                 stream.next()
                 return style[',']

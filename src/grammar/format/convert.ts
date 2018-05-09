@@ -170,7 +170,9 @@ const table: Table = {
         tags.push(renderRange('{', style.blockStart))
         if (node.arguments.length) {
             const inner = []
-            for (const item of node.arguments) {
+            let first = true
+            for (let i = node.arguments.length - 1; i >= 0 ; -- i) {
+                const item = node.arguments[i]
                 const line = []
                 if (item.type === Type.comment) {
                     line.push(table.router(item, context))
@@ -180,9 +182,12 @@ const table: Table = {
                         line.push(renderRange('=', style['=']))
                         line.push(renderRange(item.value, style.number))
                     }
-                    line.push(renderRange(',', style[',']))
+                    if (!first) {
+                        line.push(renderRange(',', style[',']))
+                        first = false
+                    }
                 }
-                inner.push(renderLine(line.join('')))
+                inner.unshift(renderLine(line.join('')))
             }
             tags.push(renderBlock(inner.join('')))
         }

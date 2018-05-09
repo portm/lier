@@ -39,6 +39,7 @@ const style: Style = {
     '...': 'spread',
     typePath: 'typePath',
     type: 'type',
+    '=': 'equal',
 }
 
 export default style

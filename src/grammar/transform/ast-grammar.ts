@@ -140,16 +140,19 @@ const table: Table = {
             return 'any'
         }
         const args = []
-        for (const arg of node.arguments) {
+        let first = ''
+        for (let i = node.arguments.length - 1; i >= 0 ; -- i) {
+            const arg = node.arguments[i]
             if (arg.type === Type.comment) {
-                args.push(fill(table.router(arg, context, indent + 1), indent + 1))
+                args.unshift(fill(table.router(arg, context, indent + 1), indent + 1))
                 continue
             }
             let value = ''
             if (arg.value) {
                 value = ` = ${arg.value}`
             }
-            args.push(fill(`${arg.name}${value},`, indent + 1))
+            args.unshift(fill(`${arg.name}${value}${first}`, indent + 1))
+            first = ','
         }
         return `enum {\n${args.join('\n')}\n${fill('}', indent)}`
     },
