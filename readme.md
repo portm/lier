@@ -190,7 +190,7 @@ key 对应的 value 可以是类型也可以是具体的值，本例中 ```type`
 ### enum
 
     enum {
-        value [, value ...]
+        name [ = index] [, ...]
     }
 
 ```json
@@ -212,7 +212,9 @@ key 对应的 value 可以是类型也可以是具体的值，本例中 ```type`
 ```js
 {
     type: enum {
-        1, 2, 3
+        top = 1,
+        right,
+        bottom
     }
 }[]
 ```
@@ -698,7 +700,7 @@ type Sub {
     @mock(1)
     enum : enum {
         # 1
-        1, 2
+        a = 1, b
     }
     @mock(3)
     allOf : int & uint

@@ -372,7 +372,7 @@ const table: Table = {
             }
             args.push(index ++)
         }
-        return types.anyOf(...args)
+        return types.enum(...args)
     },
     [Type.match]: (node, context) => {
         const test = table.router(node.test, context)
