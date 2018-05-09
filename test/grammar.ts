@@ -559,33 +559,29 @@ export = (it) => {
     1,
     `
     enum {
-        1,
-        2,
-        { a : 1 }
+        a = 1,
+        b,
     }
     `)
 
     test('enum type B',
-    { a : 1 },
+    2,
     `
     enum {
-        1,
-        2,
-        { a : 1 }
+        a = 1,
+        b,
     }
     `)
 
     test('enum type error',
-    { a : 2 },
+    3,
     `
     enum {
-        1,
-        2,
-        { a : 1 }
+        a = 1,
+        b,
     }
     `,
-    [ { path: [],
-      message: [ { a: 2 }, 'is not one of enum', [ 1, 2, { a: 1 } ] ] } ])
+    [ { path: [], message: [ 3, 'is not one of enum', [ 1, 2 ] ] } ])
 
     test('not type',
     { a : 2 },
@@ -928,7 +924,7 @@ export = (it) => {
         @mock(2)
         @mock(1)
         enum : enum {
-            1, 2
+            a = 1, b
         }
         @mock(3)
         allOf : int & uint
