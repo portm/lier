@@ -50,6 +50,7 @@ const style: FormatStyle = {
     '...': 'spread',
     type: 'type',
     typePath: 'typePath',
+    '=': 'equal',
 }
 
 export default style

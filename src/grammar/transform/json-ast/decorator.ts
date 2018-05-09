@@ -109,16 +109,21 @@ const decorator: Decorator = {
         }
         const prevMap = {}
         let comments = []
+        let last = null
         for (const property of context.type.properties) {
             if (property.type === Type.comment) {
                 comments.push(property)
+                continue
             }
             const key = property.key.value
-            prevMap[key] = {
+            last = prevMap[key] = {
                 property,
                 comments,
             }
             comments = []
+        }
+        if (comments.length && last) {
+            last.comments = last.comments.concat(comments)
         }
         const newProperties = []
         let flag = true
@@ -164,7 +169,45 @@ const decorator: Decorator = {
         if (!decorator.equal(node, context)) {
             return
         }
-        decorator.pairing(node, context.type, 'arguments')
+        const prevMap = {}
+        let comments = []
+        let last = null
+        for (const arg of context.type.arguments) {
+            if (arg.type === Type.comment) {
+                comments.push(arg)
+                continue
+            }
+            const key = arg.name
+            last = prevMap[key] = {
+                arg,
+                comments,
+            }
+            comments = []
+        }
+        if (comments.length && last) {
+            last.comments = last.comments.concat(comments)
+        }
+        const newArgs = []
+        let flag = true
+        while (node.arguments.length) {
+            const arg = node.arguments.shift()
+            newArgs.push(arg)
+            if (arg.type === Type.comment) {
+                flag = false
+                continue
+            }
+            const key = arg.name
+            const prev = prevMap[key]
+            if (!prev) {
+                flag = true
+                continue
+            }
+            if (flag) {
+                newArgs.splice(Math.max(newArgs.length - 1, 0), 0, ...prev.comments)
+            }
+            flag = true
+        }
+        node.arguments = newArgs
     },
     [Type.match]: (node, context) => {
         if (!decorator.equal(node, context)) {

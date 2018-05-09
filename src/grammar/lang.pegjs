@@ -34,6 +34,7 @@
     comment: 24,
     declare: 25,
     path: 26,
+    item: 27,
   };
   
   function buildBinaryExpression(head, tail, operator, right) {
@@ -682,7 +683,7 @@ MatchLiteral
     head:Expression ___
     "{"
     s1:__
-    tail:(cs:CaseLiteral s2:__ { return [cs].concat(s2) })*
+    tail:(cs:CaseLiteral s2:__ { return [cs].concat(s2) })+
     "}"
     {
       return {
@@ -706,19 +707,38 @@ EnumLiteral
     ___
     "{"
     s1:__
-    head:Expression tail:(
-      s2:__ "," s3:__ arg:Expression {
+    head:EnumItemLiteral
+    tail:(
+      s2:__ "," s3:__ arg:EnumItemLiteral {
         return s2.concat(s3, arg);
       }
     )*
     s4:__
+    ","?
+    s5:__
     "}"
     {
       s1.push(head);
       return {
         type: types.enum,
-        arguments: concat(s1, tail).concat(s4),
+        arguments: concat(s1, tail).concat(s4, s5),
       };
+    }
+  
+EnumItemLiteral
+  = head:IdentifierName tail:(___ "=" ___ EnumValueLiteral)? {
+    return { type: types.item, name: head, value: extractOptional(tail, 3) };
+  }
+
+EnumValueLiteral
+  = literal:HexIntegerLiteral !(IdentifierStart / DecimalDigit) {
+      return literal;
+    }
+  / literal:DecimalIntegerLiteral exponent:ExponentPart? !(IdentifierStart / DecimalDigit) {
+      return parseFloat(text());
+    }
+  / literal:OctalLiteral !(IdentifierStart / DecimalDigit) {
+      return literal;
     }
   
 ObjectLiteral

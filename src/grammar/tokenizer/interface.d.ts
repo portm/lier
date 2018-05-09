@@ -37,6 +37,7 @@ export interface Style {
     blank: string
     type: string
     typePath: string
+    '=': string
 }
 
 export interface Stream {

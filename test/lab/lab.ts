@@ -2,6 +2,7 @@ import * as lier from '../../src'
 import jsonschema2ast from '../../src/grammar/transform/jsonschema-ast'
 import ast2jsonschema from '../../src/grammar/transform/ast-jsonschema'
 import ast2slim from '../../src/grammar/transform/ast-slim'
+import dtest from '../../src/grammar/transform/json-ast/decorator'
 
 const base = lier.parse(`{
     a: ({
@@ -58,7 +59,7 @@ type Sub {
     @mock(1)
     enum : enum {
         # 1
-        1, 2
+        a = 1, b
     }
     @mock(3)
     allOf : int & uint
@@ -307,5 +308,24 @@ console.log(lier.validatex([
     childrens?: UserInfo[]
 }
 UserInfo[]`))
+
+const test = lier.parse(`{
+    a: enum {
+        a = 1,
+        # as
+        c,
+        b
+    }
+}`)
+
+dtest(test, lier.parse(`{
+    a: enum {
+        # test
+        a,
+        # dfs
+        b
+    }
+}`))
+console.log(lier.stringify(test))
 
 console.timeEnd('parse')

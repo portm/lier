@@ -119,7 +119,6 @@ export interface DecoratorNode extends Node {
 
 export interface BinaryNode extends Node {
     type: Type.binary
-    test: Node
     operator: string
     left: Node
     right: Node

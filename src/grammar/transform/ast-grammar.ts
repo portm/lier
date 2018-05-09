@@ -137,21 +137,19 @@ const table: Table = {
     },
     [Type.enum]: (node, context, indent) => {
         if (!node.arguments.length) {
-            return 'enum {}'
+            return 'any'
         }
         const args = []
-        let first = true
-        for (let i = node.arguments.length - 1; i >= 0; -- i) {
-            const arg = node.arguments[i]
-            let last = ''
-            if (arg.type !== Type.comment) {
-                if (!first) {
-                    last = ','
-                } else {
-                    first = false
-                }
+        for (const arg of node.arguments) {
+            if (arg.type === Type.comment) {
+                args.push(fill(table.router(arg, context, indent + 1), indent + 1))
+                continue
             }
-            args.unshift(fill(table.router(arg, context, indent + 1) + last, indent + 1))
+            let value = ''
+            if (arg.value) {
+                value = ` = ${arg.value}`
+            }
+            args.push(fill(`${arg.name}${value},`, indent + 1))
         }
         return `enum {\n${args.join('\n')}\n${fill('}', indent)}`
     },

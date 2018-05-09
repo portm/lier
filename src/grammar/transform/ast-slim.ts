@@ -178,6 +178,7 @@ const table: Table = {
     [Type.enum]: (node, context) => {
         let desc = ''
         const args = []
+        let index = 0
         for (const arg of node.arguments) {
             if (arg.type === Type.comment) {
                 if (desc) {
@@ -186,17 +187,12 @@ const table: Table = {
                 desc += arg.value
                 continue
             }
-            if (
-                arg.type !== Type.null &&
-                arg.type !== Type.boolean &&
-                arg.type !== Type.number &&
-                arg.type !== Type.string &&
-                arg.type !== Type.identifier &&
-                arg.type !== Type.regular
-            ) {
-                args.push(table.router(arg, context))
+            if (arg.value) {
+                index = arg.value
+            } else {
+                arg.value = index ++
             }
-            args.push(arg.value)
+            args.push(arg)
         }
         const ret = {
             type: slimTypes.enum,

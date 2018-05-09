@@ -136,10 +136,17 @@ const convertEnum = (data, context: Context) => {
         args.push(convert(item, context))
     }
     convertExport(data, context)
-    return {
-        type: Type.enum,
-        arguments: args,
-    } as lier.EnumNode
+    if (!args.length) {
+        return utils.makeType('any')
+    }
+    return args.reduce((result, item) => {
+        return {
+            type: Type.binary,
+            operator: '|',
+            left: result,
+            right: item,
+        } as lier.BinaryNode
+    })
 }
 
 const convertArray = (data, context: Context) => {

@@ -362,13 +362,17 @@ const table: Table = {
     },
     [Type.enum]: (node, context) => {
         const args = []
+        let index = 0
         for (const item of node.arguments) {
             if (item.type === Type.comment) {
                 continue
             }
-            args.push(unpacking(table.router(item, context)))
+            if (item.value) {
+                index = item.value
+            }
+            args.push(index ++)
         }
-        return types.enum(...args)
+        return types.anyOf(...args)
     },
     [Type.match]: (node, context) => {
         const test = table.router(node.test, context)

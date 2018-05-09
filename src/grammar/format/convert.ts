@@ -170,19 +170,19 @@ const table: Table = {
         tags.push(renderRange('{', style.blockStart))
         if (node.arguments.length) {
             const inner = []
-            let first = true
-            for (let i = node.arguments.length - 1; i >= 0; -- i) {
-                const item = node.arguments[i]
+            for (const item of node.arguments) {
                 const line = []
-                line.push(table.router(item, context))
-                if (item.type !== Type.comment) {
-                    if (!first) {
-                        line.push(renderRange(',', style[',']))
-                    } else {
-                        first = false
+                if (item.type === Type.comment) {
+                    line.push(table.router(item, context))
+                } else {
+                    line.push(renderRange(item.name, style.identifier))
+                    if (item.value) {
+                        line.push(renderRange('=', style['=']))
+                        line.push(renderRange(item.value, style.number))
                     }
+                    line.push(renderRange(',', style[',']))
                 }
-                inner.unshift(renderLine(line.join('')))
+                inner.push(renderLine(line.join('')))
             }
             tags.push(renderBlock(inner.join('')))
         }

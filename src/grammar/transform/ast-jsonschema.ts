@@ -289,9 +289,15 @@ const visitor: Visitor = {
         const compound = {
             enum: []
         }
+        let index = 0
         for (const arg of node.arguments) {
-            const item = this.router(arg, context)
-            compound.enum.push(item && item.hasOwnProperty('const') ? item.const : item)
+            if (arg.value) {
+                index = arg.value
+            }
+            compound.enum.push({
+                description: arg.name,
+                const: index ++
+            })
         }
         return compound
     },
