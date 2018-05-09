@@ -97,18 +97,11 @@ SourceElements
 
 TypeAssignment
   = TypeToken ___ head:Identifier
-    tail:(
-      ___
-      (
-        "." ___ attr:Identifier { return attr; }
-        /
-        "[" ___ attr:(StringLiteral / NullLiteral / BooleanLiteral / NumericLiteral) ___ "]" { return attr; }
-      )
-    )*
+    tail:(___ "." ___ Identifier)*
     ___ value:TypeExpression {
     return {
       type: types.declare,
-      path: buildList(head, tail, 1),
+      path: buildList(head, tail, 3),
       value: value,
     };
   }
