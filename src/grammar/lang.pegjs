@@ -761,13 +761,14 @@ PropertyNameAndValueList
     }
   
 PropertyAssignment
-  = decorators:(DecoratorList ___)?
+  = decorators:DecoratorList?
+    s1: __
     key:PropertyName ___
     optional:"?"? ___ ":" ___
     value:Expression {
       return {
         type: types.property,
-        decorators : optionalList(extractOptional(decorators, 0)),
+        decorators : optionalList(decorators).concat(s1),
         key : key,
         optional : !!optional,
         value : value,
@@ -775,8 +776,15 @@ PropertyAssignment
     }
   
 DecoratorList
-  = head:Decorator tail:(___ Decorator)* {
-      return buildList(head, tail, 1);
+  = head:Decorator
+    tail:(
+      s1:__
+      decorator:Decorator {
+        s1.push(decorator);
+        return s1;
+      }
+    )* {
+      return concat(head, tail);
     }
   
 Decorator
