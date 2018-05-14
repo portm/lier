@@ -227,7 +227,19 @@ const visitor: Visitor = {
                         object.properties = {}
                     }
                     object.properties[key.value] = value
-                    setDecorator(property.decorators, object.properties[key.value])
+                    const decorators = []
+                    for (const decorate of property.decorators) {
+                        if (decorate.type === Type.decorator) {
+                            decorators.push(decorate)
+                            continue
+                        }
+                        if (desc) {
+                            desc += '\n' + decorate.value
+                        } else {
+                            desc = decorate.value
+                        }
+                    }
+                    setDecorator(decorators, object.properties[key.value])
                     if (desc) {
                         if (value) {
                             value.description = desc

@@ -3,6 +3,7 @@ enum State {
     expressionBody,
     element,
     declareStart,
+    declareEnd,
     declare,
     property,
     propertyName,
@@ -43,8 +44,6 @@ enum State {
     whitespace,
     pathStart,
     pathBody,
-    pathBracketStart,
-    pathBracketEnd,
 }
 
 export default State

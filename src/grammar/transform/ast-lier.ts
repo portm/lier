@@ -342,6 +342,9 @@ const table: Table = {
             const key = property.key.type === Type.identifier ? property.key.value : table.router(property.key, context)
             let value = unpacking(table.router(property.value, context))
             for (const decorate of property.decorators) {
+                if (decorate.type !== Type.decorator) {
+                    continue
+                }
                 const decorateFun = types[decorate.name]
                 if (!decorateFun) {
                     throw new Error('not implemented decorate:' + decorate.name)

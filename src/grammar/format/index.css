@@ -26,7 +26,11 @@
     padding: 0 9px;
 }
 
-.lier-container .lier-comma, .lier-container .lier-colon, .lier-container .lier-case {
+.lier-container .lier-comma,
+.lier-container .lier-colon,
+.lier-container .lier-case,
+.lier-container .lier-type,
+.lier-container .lier-typePath {
     padding-right: 9px;
 }
 

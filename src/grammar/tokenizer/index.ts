@@ -126,8 +126,8 @@ const tokenizer = (style: Style) => {
             context.state.pop()
             const type = /^type(?=\s|$)/
             if (stream.match(type)) {
-                context.state.push(State.declareStart)
-                context.state.push(State.empty)
+                context.state.push(State.declareEnd)
+                context.state.push(State.whitespace)
                 context.state.push(State.primary)
                 context.state.push(State.whitespace)
                 context.state.push(State.pathStart)
@@ -159,56 +159,22 @@ const tokenizer = (style: Style) => {
                 stream.next()
                 return style['.']
             }
-
-            if (peek === '[') {
-                ++ context.commitIndent
-                context.state.push(State.pathBracketStart)
-                context.state.push(State.whitespace)
-                stream.next()
-                return style.arrayStart
-            }
             return table.router(stream, context)
         },
 
-        [State.pathBracketStart]: (stream, context) => {
+        [State.declareEnd]: (stream, context) => {
             const peek = stream.peek()
             context.state.pop()
-            if (peek === '\'' || peek === '"') {
-                context.backed = false
-                context.string = peek
-                context.style = style.string
-                context.state.push(State.pathBracketEnd)
+            if (peek === '|' || peek === '&') {
+                context.state.push(State.declareEnd)
                 context.state.push(State.whitespace)
-                context.state.push(State.string)
-                return table.router(stream, context)
-            }
-
-            if (peek === '`') {
-                context.backed = false
-                context.style = style.string
-                context.state.push(State.pathBracketEnd)
+                context.state.push(State.primary)
                 context.state.push(State.whitespace)
-                context.state.push(State.backtickString)
                 stream.next()
-                return style.string
+                return style.operator
             }
-
-            const regex = /^\/(?:[^\/\\]*|\\.)+\/([im]*)/
-            if (stream.match(regex)) {
-                return style.regex
-            }
-
-            const number = /[\d.]/
-            if (number.test(peek)) {
-                context.style = style.number
-                context.state.push(State.pathBracketEnd)
-                context.state.push(State.whitespace)
-                context.state.push(State.number)
-                return table.router(stream, context)
-            }
-            context.state.pop()
-            context.state.pop()
-            context.state.push(State.array)
+            context.state.push(State.declareStart)
+            context.state.push(State.empty)
             return table.router(stream, context)
         },
 
@@ -217,19 +183,6 @@ const tokenizer = (style: Style) => {
             context.state.push(State.expressionBody)
             context.state.push(State.whitespace)
             context.state.push(State.unary)
-            return table.router(stream, context)
-        },
-
-        [State.pathBracketEnd]: (stream, context) => {
-            const peek = stream.peek()
-            context.state.pop()
-            if (peek === ']') {
-                -- context.commitIndent
-                context.state.push(State.pathBody)
-                context.state.push(State.whitespace)
-                stream.next()
-                return style.memberEnd
-            }
             return table.router(stream, context)
         },
 

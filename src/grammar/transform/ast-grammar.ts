@@ -119,6 +119,10 @@ const table: Table = {
             const key = table.router(property.key, context, indent + 1)
             const value = table.router(property.value, context, indent + 1)
             for (const decorate of property.decorators) {
+                if (decorate.type !== Type.decorator) {
+                    line.push(fill(table.router(decorate, context, indent + 1), indent + 1))
+                    continue
+                }
                 if (!types[decorate.name]) {
                     throw new Error('not implemented decorate:' + decorate.name)
                 }

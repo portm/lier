@@ -4,7 +4,6 @@ import style from './style'
 
 class Context {
     inkey = false
-    declares: string[] = []
 }
 
 interface Table {
@@ -68,11 +67,11 @@ const table: Table = {
         for (const item of node) {
             let value = table.router(item, context)
             if (item.type === Type.comment) {
-                value = renderLine(value)
+                value = renderLayout(value)
             }
             tags.push(value)
         }
-        return renderContainer(context.declares.concat(tags).join(''))
+        return renderContainer(tags.join(''))
     },
     router: (node, context) => {
         if (!node) {
@@ -130,6 +129,10 @@ const table: Table = {
                 context.inkey = false
                 const value = table.router(property.value, context)
                 for (const decorate of property.decorators) {
+                    if (decorate.type !== Type.decorator) {
+                        inner.push(renderLine(table.router(decorate, context)))
+                        continue
+                    }
                     const line = []
                     const args = []
                     if (decorate.arguments.length) {
@@ -318,10 +321,16 @@ const table: Table = {
         return tags.join('')
     },
     [Type.element]: (node, context) => {
+        const tags = []
         for (const declare of node.declarations) {
-            context.declares.push(table.router(declare, context))
+            if (declare.type === Type.comment) {
+                tags.push(renderLayout(table.router(declare, context)))
+                continue
+            }
+            tags.push(table.router(declare, context))
         }
-        return renderLayout(table.router(node.assignment, context))
+        tags.push(renderLayout(table.router(node.assignment, context)))
+        return tags.join('')
     },
     [Type.comment]: (node, context) => {
         return renderRange(`# ${String(node.value).trim()}`, style.comment)

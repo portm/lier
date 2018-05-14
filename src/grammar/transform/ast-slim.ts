@@ -132,6 +132,21 @@ const table: Table = {
                 value,
                 optional: property.optional,
             }
+
+            ret.properties.push(item)
+
+            const decorators = []
+            for (const decorate of property.decorators) {
+                if (decorate.type === Type.decorator) {
+                    decorators.push(decorate)
+                    continue
+                }
+                if (desc) {
+                    desc += '\n'
+                }
+                desc += property.value
+            }
+
             if (desc) {
                 item['description'] = desc
             }
@@ -142,11 +157,9 @@ const table: Table = {
                 continue
             }
 
-            ret.properties.push(item)
-
-            if (property.decorators.length) {
+            if (decorators.length) {
                 item['decorators'] = []
-                for (const decorate of property.decorators) {
+                for (const decorate of decorators) {
                     item['decorators'].push({
                         name: decorate.name,
                         arguments: decorate.arguments.map(arg => {
