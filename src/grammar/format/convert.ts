@@ -187,6 +187,7 @@ const table: Table = {
                     }
                     if (!first) {
                         line.push(renderRange(',', style[',']))
+                    } else {
                         first = false
                     }
                 }

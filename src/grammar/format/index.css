@@ -22,7 +22,10 @@
     padding-left: 36px;
 }
 
-.lier-container .lier-match-test, .lier-container .lier-operator, .lier-type-path {
+.lier-container .lier-match-test,
+.lier-container .lier-operator,
+.lier-container .lier-type-path,
+.lier-container .lier-equal {
     padding: 0 9px;
 }
 

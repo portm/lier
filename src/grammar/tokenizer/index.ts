@@ -722,6 +722,7 @@ const tokenizer = (style: Style) => {
                 context.state.push(State.whitespace)
                 context.state.push(State.identifier)
                 context.state.push(State.empty)
+                context.style = style.identifier
                 stream.next()
                 return style[',']
             }
