@@ -1,5 +1,5 @@
 import * as lier from '../../interface'
-import utils from './utils'
+import utils from '../../utils'
 
 const Type = lier.Type
 
