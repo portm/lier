@@ -2,7 +2,7 @@ import decorates from './decorates'
 import dollar from './dollar'
 import types from './types'
 
-const levelUp = list => {
+const up = list => {
     return item => {
         const index = list.indexOf(item)
         if (index === -1) {
@@ -46,32 +46,126 @@ initList(decorates)
 
 initList(dollar)
 
-export default CodeMirror => {
-    const hintTips = (editor, list, levelUp, line, start, end = start) => {
-        editor.showHint({
-            completeSingle: false,
-            hint: function (editor, option) {
-                const data = {
-                    list,
-                    from: CodeMirror.Pos(line, end),
-                    to: CodeMirror.Pos(line, start),
+const tips = (CodeMirror, editor, list, up, line, start, end = start) => {
+    editor.showHint({
+        completeSingle: false,
+        hint: function (editor, option) {
+            const data = {
+                list,
+                from: CodeMirror.Pos(line, end),
+                to: CodeMirror.Pos(line, start),
+            }
+
+            CodeMirror.on(data, 'pick', (el) => {
+                up(el)
+                if (el.select) {
+                    const cursor = editor.getCursor()
+                    editor.setSelection(
+                        { line: el.select[2] || cursor.line, ch: cursor.ch - el.select[1] },
+                        { line: el.select[2] || cursor.line, ch: cursor.ch - el.select[0] },
+                    )
                 }
+            })
 
-                CodeMirror.on(data, 'pick', (el) => {
-                    levelUp(el)
-                    if (el.select) {
-                        const cursor = editor.getCursor()
-                        editor.setSelection(
-                            { line: el.select[2] || cursor.line, ch: cursor.ch - el.select[1] },
-                            { line: el.select[2] || cursor.line, ch: cursor.ch - el.select[0] },
-                        )
-                    }
-                })
+            return data
+        },
+    })
+}
 
-                return data
-            },
-        })
+export {
+    types,
+    decorates,
+    dollar,
+    tips,
+    up,
+}
+
+const defaultOnHint = (event: {
+    CodeMirror: any
+    editor: any
+    type: string
+    line: number
+    start: number
+    end: number
+    word?: string
+    token: any
+    cursor: any
+}): void => {
+    if (event.type === 'colon') {
+        tips(
+            event.CodeMirror,
+            event.editor,
+            types,
+            up(types),
+            event.line,
+            event.start,
+            event.end
+        )
+        return
     }
+    if (event.type === 'at') {
+        tips(
+            event.CodeMirror,
+            event.editor,
+            decorates,
+            up(decorates),
+            event.line,
+            event.start,
+            event.end
+        )
+        return
+    }
+    if (event.type === 'key-dollar') {
+        tips(
+            event.CodeMirror,
+            event.editor,
+            dollar.filter(i => i.text.indexOf(event.word) === 0),
+            up(dollar),
+            event.line,
+            event.start,
+            event.end
+        )
+        return
+    }
+
+    if (event.type === 'identifier') {
+        tips(
+            event.CodeMirror,
+            event.editor,
+            types.filter(i => i.text.indexOf(event.word) === 0),
+            up(types),
+            event.line,
+            event.start,
+            event.end
+        )
+        return
+    }
+
+    if (event.type === 'decorate') {
+        tips(
+            event.CodeMirror,
+            event.editor,
+            decorates.filter(i => i.text.indexOf(event.word) === 0),
+            up(decorates),
+            event.line,
+            event.start,
+            event.end
+        )
+        return
+    }
+
+    tips(
+        event.CodeMirror,
+        event.editor,
+        [],
+        null,
+        event.line,
+        event.start,
+        event.end
+    )
+}
+
+export default (CodeMirror, onHint = defaultOnHint) => {
 
     const hint = (editor, change) => {
         const cursor = editor.getCursor()
@@ -81,15 +175,19 @@ export default CodeMirror => {
             return
         }
 
-        if (token.type === 'colon') {
+        if (token.type === 'colon' || token.type === 'at') {
             // editor.operation(() => editor.replaceSelection(' '));
             // hintTips(editor, types, levelUp(types), cursor.line, cursor.ch + 1, cursor.ch + 1);
-            hintTips(editor, types, levelUp(types), cursor.line, cursor.ch, cursor.ch)
-            return
-        }
-
-        if (token.type === 'at') {
-            hintTips(editor, decorates, levelUp(decorates), cursor.line, cursor.ch, cursor.ch)
+            onHint({
+                CodeMirror,
+                editor,
+                type: token.type,
+                line: cursor.line,
+                start: cursor.ch,
+                end: cursor.ch,
+                token,
+                cursor,
+            })
             return
         }
 
@@ -98,43 +196,31 @@ export default CodeMirror => {
         const offsetStart = word.length - (word = word.replace(/^\s+/, '')).length
         const offsetEnd = word.length - (word = word.replace(/\s+$/, '')).length
 
-        if (token.type === 'key-dollar') {
-            hintTips(
+        if (token.type === 'key-dollar' || token.type === 'identifier' || token.type === 'decorate') {
+            onHint({
+                CodeMirror,
                 editor,
-                dollar.filter(i => i.text.indexOf(word) === 0),
-                levelUp(dollar),
-                cursor.line,
-                token.start + offsetStart,
-                token.end + offsetEnd,
-            )
+                type: token.type,
+                line: cursor.line,
+                start: token.start + offsetStart,
+                end: token.end + offsetEnd,
+                word,
+                token,
+                cursor,
+            })
             return
         }
 
-        if (token.type === 'identifier') {
-            hintTips(
-                editor,
-                types.filter(i => i.text.indexOf(word) === 0),
-                levelUp(types),
-                cursor.line,
-                token.start + offsetStart,
-                token.end + offsetEnd,
-            )
-            return
-        }
-
-        if (token.type === 'decorate') {
-            hintTips(
-                editor,
-                decorates.filter(i => i.text.indexOf(word) === 0),
-                levelUp(decorates),
-                cursor.line,
-                token.start + offsetStart,
-                token.end + offsetEnd,
-            )
-            return
-        }
-
-        hintTips(editor, [], null, 0, 0, 0)
+        onHint({
+            CodeMirror,
+            editor,
+            type: token.type,
+            line: cursor.line,
+            start: cursor.ch,
+            end: cursor.ch,
+            token,
+            cursor,
+        })
     }
 
     return hint
