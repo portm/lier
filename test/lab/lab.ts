@@ -328,4 +328,27 @@ dtest(test, lier.parse(`{
 }`))
 console.log(lier.stringify(test))
 
+const testLang = `{
+    # 筛选组名称
+    name?: str
+    # 筛选组key,poi_attr_,goods_attr_,brandid,price
+    selectkey?: str
+    # 筛选项展示类型,checklist(下拉列表),checkbox(选框),rangeselect(拖拽条)
+    showtype?: str
+    # 筛选项选择类型,equal(单选),multi(多选)
+    type?: str
+    # 筛选项值列表
+    # values?: (definition('Map<string,string>') | 3)[]
+    values?: (definition('Map<string,string>') | 3)[]
+}`
+console.log(lier.validatex({
+    values: [1]
+}, testLang, {
+    'Map<string,string>': `1`
+}))
+
+console.log(JSON.stringify(ast2jsonschema(lier.parse(testLang)), null, 4))
+
+console.log(lier.stringify(jsonschema2ast(ast2jsonschema(lier.parse(testLang)))))
+
 console.timeEnd('parse')
