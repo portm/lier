@@ -1,6 +1,7 @@
 import { types } from '../../'
 import { Node, Type } from '../interface'
 import style from './style'
+import utils from '../utils'
 
 class Context {
     inkey = false
@@ -97,21 +98,38 @@ const table: Table = {
 
     },
     [Type.member]: (node, context) => {
-        const members = [table.router(node.object, context)]
-        for (const property of node.properties) {
-            members.push(table.router(property, context))
+        const tags = [table.router(node.object, context)]
+        if (node.object.type === Type.unary || node.object.type === Type.binary) {
+            tags.unshift(renderRange('(', style.groupStart))
+            tags.push(renderRange(')', style.groupEnd))
         }
-        return members.join('')
+        for (const property of node.properties) {
+            tags.push(table.router(property, context))
+        }
+        return tags.join('')
     },
     [Type.binary]: (node, context) => {
         const operator = node.operator
-        const left = table.router(node.left, context)
         const right = table.router(node.right, context)
+        const tags = [table.router(node.left, context)]
 
-        const tags = []
-        tags.push(left)
+        if (node.left.type === Type.binary
+            && utils.binaryOperators[node.left.operator] < utils.binaryOperators[operator]) {
+            tags.unshift(renderRange('(', style.groupStart))
+            tags.push(renderRange(')', style.groupEnd))
+        }
+
         tags.push(renderRange(operator, style.operator))
-        tags.push(right)
+
+        if (node.right.type === Type.binary
+            && utils.binaryOperators[node.right.operator] < utils.binaryOperators[operator]) {
+            tags.push(renderRange('(', style.groupStart))
+            tags.push(right)
+            tags.push(renderRange(')', style.groupEnd))
+        } else {
+            tags.push(right)
+        }
+
         return tags.join('')
     },
     [Type.object]: (node, context) => {
@@ -224,9 +242,11 @@ const table: Table = {
         return tags.join('')
     },
     [Type.call]: (node, context) => {
-        const callee = table.router(node.callee, context)
-        const tags = []
-        tags.push(callee)
+        const tags = [table.router(node.callee, context)]
+        if (node.callee.type === Type.unary || node.callee.type === Type.binary) {
+            tags.unshift(renderRange('(', style.groupStart))
+            tags.push(renderRange(')', style.groupEnd))
+        }
         tags.push(renderRange('(', style.groupStart))
         if (node.arguments.length) {
             for (const arg of node.arguments) {
@@ -239,7 +259,14 @@ const table: Table = {
         return tags.join('')
     },
     [Type.array]: (node, context) => {
-        return `${table.router(node.value, context)}[]`
+        const tags = [table.router(node.value, context)]
+        if (node.value.type === Type.unary || node.value.type === Type.binary) {
+            tags.unshift(renderRange('(', style.groupStart))
+            tags.push(renderRange(')', style.groupEnd))
+        }
+        tags.push(renderRange('[', style.arrayStart))
+        tags.push(renderRange(']', style.arrayEnd))
+        return tags.join('')
     },
     [Type.tuple]: (node, context) => {
         const tags = []
@@ -334,7 +361,7 @@ const table: Table = {
         return tags.join('')
     },
     [Type.comment]: (node, context) => {
-        return renderRange(`# ${String(node.value).trim()}`, style.comment)
+        return renderRange(`# ${String(node.value).trim().replace(/[\r\n]+/g, ' ')}`, style.comment)
     },
     [Type.declare]: (node, context) => {
         const tags = []

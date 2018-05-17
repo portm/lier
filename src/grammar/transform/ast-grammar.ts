@@ -1,5 +1,6 @@
 import { types } from '../../'
 import { Node, Type } from '../interface'
+import utils from '../utils'
 
 class Context {
     root = null
@@ -13,37 +14,6 @@ interface Table {
 
 const fill = (input, length, space = 4) => {
     return new Array(length * space + 1).join(' ') + input
-}
-
-const binaryOperators = {
-    '|': 7,
-    '&': 9,
-    '*': 14,
-    '/': 14,
-    '%': 14,
-    '<<': 12,
-    '>>': 12,
-    '>>>': 12,
-    '+': 13,
-    '-': 13,
-    '<=': 11,
-    '>=': 11,
-    '<': 11,
-    '>': 11,
-    '===': 10,
-    '!==': 10,
-    '==': 10,
-    '!=': 10,
-    '^': 8,
-    '&&': 6,
-    '||': 5,
-}
-
-const unaryOperators = {
-    '+': true,
-    '-': true,
-    '!': true,
-    '~': true,
 }
 
 const table: Table = {
@@ -73,7 +43,7 @@ const table: Table = {
         const operator = node.operator
         const argument = table.router(node.argument, context, indent)
 
-        if (unaryOperators[operator]) {
+        if (utils.unaryOperators[operator]) {
             return `${operator} ${argument}`
         }
 
@@ -95,15 +65,17 @@ const table: Table = {
         let left = table.router(node.left, context, indent)
         let right = table.router(node.right, context, indent)
 
-        if (!binaryOperators[operator]) {
+        if (!utils.binaryOperators[operator]) {
             throw new Error('not implemented binary operator:' + operator)
         }
 
-        if (node.left.type === Type.binary && binaryOperators[node.left.operator] < binaryOperators[operator]) {
+        if (node.left.type === Type.binary
+            && utils.binaryOperators[node.left.operator] < utils.binaryOperators[operator]) {
             left = `(${left})`
         }
 
-        if (node.right.type === Type.binary && binaryOperators[node.right.operator] < binaryOperators[operator]) {
+        if (node.right.type === Type.binary
+            && utils.binaryOperators[node.right.operator] < utils.binaryOperators[operator]) {
             right = `(${right})`
         }
 
@@ -177,7 +149,10 @@ const table: Table = {
         return `match ${test} {\n${cases.join('\n')}\n${fill('}', indent)}`
     },
     [Type.call]: (node, context, indent) => {
-        const callee = table.router(node.callee, context, indent)
+        let callee = table.router(node.callee, context, indent)
+        if (node.callee.type === Type.unary || node.callee.type === Type.binary) {
+            callee = `(${callee})`
+        }
         const args = []
         for (const arg of node.arguments) {
             args.push(table.router(arg, context, indent + 1))
@@ -205,7 +180,11 @@ const table: Table = {
         return `[\n${args.join('\n')}\n${fill(']', indent)}`
     },
     [Type.array]: (node, context, indent) => {
-        return `${table.router(node.value, context, indent)}[]`
+        const value = `${table.router(node.value, context, indent)}`
+        if (node.value.type === Type.unary || node.value.type === Type.binary) {
+            return `(${value})[]`
+        }
+        return `${value}[]`
     },
     [Type.identifier]: (node, context, indent) => {
         return node.value
@@ -247,7 +226,7 @@ const table: Table = {
         return `${table.router(node.value, context, indent)}?`
     },
     [Type.comment]: (node, context, indent) => {
-        return `# ${String(node.value).trim()}`
+        return `# ${String(node.value).trim().replace(/[\r\n]+/g, ' ')}`
     },
     [Type.element]: (node, context, indent) => {
         const ret = []

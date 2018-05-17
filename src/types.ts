@@ -166,6 +166,7 @@ function optional (type): Type {
         if (ctx.root.isMock)
             return ctx.mock(type)
 
+
         if (!_.isUndefined(ctx.data))
             ctx.validate(ctx.data, type)
     }
@@ -334,18 +335,19 @@ function self (fn:  (self: any) => any): Type {
     }
 }
 
-function definition (paths: string[]): Type {
+function definition (paths: string[] | string): Type {
     return function fn (ctx: Context) {
         if (!_.isObjectLike(_.get(ctx, 'root.declares'))) {
-            throw 'not implemented type:' + paths.join('.')
+            throw 'not implemented type:' + paths
         }
         const type = _.get(ctx.root.declares, paths)
         if (ctx.root.isMock) {
             return ctx.mock(type)
         }
 
+
         if (!type) {
-            ctx.root.errors.push(new LierError(ctx.path, ['not implemented type:' + paths.join('.')]))
+            ctx.root.errors.push(new LierError(ctx.path, ['not implemented type:' + paths]))
             return
         }
         ctx.validate(ctx.data, type)
