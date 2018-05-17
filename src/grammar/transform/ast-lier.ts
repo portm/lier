@@ -130,8 +130,8 @@ const table: Table = {
         const operator = node.operator
         const left = table.router(node.left, context)
         const right = table.router(node.right, context)
-        const leftFunctioned = left instanceof Function
-        const rightFunctioned = right instanceof Function
+        const leftPacking = ispacking(left)
+        const rightPacking = ispacking(right)
 
         if (operator === '|') {
             return types.anyOf(unpacking(left), unpacking(right))
@@ -142,8 +142,8 @@ const table: Table = {
         }
 
         if (operator === '*') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) * right(self))
                 }
                 return packing(self => left(self) * right)
@@ -152,8 +152,8 @@ const table: Table = {
         }
 
         if (operator === '/') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) / right(self))
                 }
                 return packing(self => left(self) / right)
@@ -162,8 +162,8 @@ const table: Table = {
         }
 
         if (operator === '%') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) % right(self))
                 }
                 return packing(self => left(self) % right)
@@ -172,8 +172,8 @@ const table: Table = {
         }
 
         if (operator === '<<') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) << right(self))
                 }
                 return packing(self => left(self) << right)
@@ -182,8 +182,8 @@ const table: Table = {
         }
 
         if (operator === '>>') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) >> right(self))
                 }
                 return packing(self => left(self) >> right)
@@ -192,8 +192,8 @@ const table: Table = {
         }
 
         if (operator === '>>>') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) >>> right(self))
                 }
                 return packing(self => left(self) >>> right)
@@ -202,8 +202,8 @@ const table: Table = {
         }
 
         if (operator === '+') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) + right(self))
                 }
                 return packing(self => left(self) + right)
@@ -212,8 +212,8 @@ const table: Table = {
         }
 
         if (operator === '-') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) - right(self))
                 }
                 return packing(self => left(self) - right)
@@ -222,8 +222,8 @@ const table: Table = {
         }
 
         if (operator === '<=') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) <= right(self))
                 }
                 return packing(self => left(self) <= right)
@@ -232,8 +232,8 @@ const table: Table = {
         }
 
         if (operator === '>=') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) >= right(self))
                 }
                 return packing(self => left(self) >= right)
@@ -242,8 +242,8 @@ const table: Table = {
         }
 
         if (operator === '<') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) < right(self))
                 }
                 return packing(self => left(self) < right)
@@ -252,8 +252,8 @@ const table: Table = {
         }
 
         if (operator === '>') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) > right(self))
                 }
                 return packing(self => left(self) > right)
@@ -262,8 +262,8 @@ const table: Table = {
         }
 
         if (operator === '===') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) === right(self))
                 }
                 return packing(self => left(self) === right)
@@ -272,8 +272,8 @@ const table: Table = {
         }
 
         if (operator === '!==') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) !== right(self))
                 }
                 return packing(self => left(self) !== right)
@@ -282,8 +282,8 @@ const table: Table = {
         }
 
         if (operator === '==') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) == right(self))
                 }
                 return packing(self => left(self) == right)
@@ -292,8 +292,8 @@ const table: Table = {
         }
 
         if (operator === '!=') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) != right(self))
                 }
                 return packing(self => left(self) != right)
@@ -302,8 +302,8 @@ const table: Table = {
         }
 
         if (operator === '^') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) ^ right(self))
                 }
                 return packing(self => left(self) ^ right)
@@ -312,8 +312,8 @@ const table: Table = {
         }
 
         if (operator === '&&') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) && right(self))
                 }
                 return packing(self => left(self) && right)
@@ -322,8 +322,8 @@ const table: Table = {
         }
 
         if (operator === '||') {
-            if (leftFunctioned) {
-                if (rightFunctioned) {
+            if (leftPacking) {
+                if (rightPacking) {
                     return packing(self => left(self) || right(self))
                 }
                 return packing(self => left(self) || right)
