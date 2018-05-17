@@ -44,6 +44,10 @@ const convert = (data, context: Context) => {
         return convertAllOf(data, context)
     }
 
+    if (data.const) {
+        return convertConst(data, context)
+    }
+
     if (type === 'string') {
         return convertString(data, context)
     }
@@ -73,6 +77,11 @@ const convert = (data, context: Context) => {
     }
 
     return directConvert(data, context)
+}
+
+const convertConst = (data, context: Context) => {
+    convertExport(data, context)
+    return directConvert(data.const, context)
 }
 
 const convertNull = (data, context: Context) => {
@@ -209,6 +218,21 @@ const convertRef = (data, context: Context) => {
     if (path[0] === 'definitions') {
         path.shift()
     }
+
+    if (!path.length) {
+        return utils.makeType('any')
+    }
+
+    if (!utils.isIdentifier(path[0])) {
+        return {
+            type: Type.call,
+            callee: utils.makeType('definition'),
+            arguments: [{
+                type: Type.string,
+                value: path.join('.'),
+            } as lier.StringNode],
+        } as lier.CallNode
+    }
     
     return path.reduce((result, element) => {
         if (element === 'definitions') {
@@ -217,19 +241,31 @@ const convertRef = (data, context: Context) => {
         let properties = result.type === Type.member ? result.properties: []
         if (utils.isIdentifier(element)) {
             properties.push({
-                type: Type.identifier,
-                value: element,
-            } as lier.IdentifierNode)
+                type: Type.path,
+                value: {
+                    type: Type.identifier,
+                    value: element,
+                } as lier.IdentifierNode,
+                computed: false,
+            } as lier.PathNode)
         } else if (utils.isNumber(element)) {
             properties.push({
-                type: Type.number,
-                value: +element,
-            } as lier.NumberNode)
+                type: Type.path,
+                value: {
+                    type: Type.number,
+                    value: +element,
+                } as lier.NumberNode,
+                computed: true,
+            } as lier.PathNode)
         } else {
             properties.push({
+                type: Type.path,
+                value: {
                 type: Type.string,
-                value: element,
-            } as lier.StringNode)
+                    value: element,
+                } as lier.StringNode,
+                computed: true,
+            } as lier.PathNode)
         }
         if (result.type === Type.member) {
             return result

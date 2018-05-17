@@ -70,6 +70,12 @@ export interface IdentifierNode extends Node {
     value: string
 }
 
+export interface PathNode extends Node {
+    type: Type.path
+    value: Node
+    computed: boolean
+}
+
 export interface ArrayNode extends Node {
     type: Type.array
     value: Node

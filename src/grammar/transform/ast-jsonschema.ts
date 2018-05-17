@@ -315,21 +315,31 @@ const visitor: Visitor = {
     },
     [Type.call]: function (node, context) {
         const callee = this.router(node.callee, context)
-        if (!callee
-            || callee.type !== 'oneOf' && callee.type !== 'anyOf' && callee.type !== 'allOf' && callee.type !== 'not') {
+        if (!callee) {
             return {}
         }
-        const compound = {
-            [callee.type]: []
+        if (callee.type === 'oneOf' || callee.type === 'anyOf' || callee.type === 'allOf' || callee.type === 'not') {
+            const compound = {
+                [callee.type]: []
+            }
+            for (const arg of node.arguments) {
+                compound[callee.type].push(this.router(arg, context))
+            }
+            return compound
         }
-        for (const arg of node.arguments) {
-            compound[callee.type].push(this.router(arg, context))
+        if (node.callee.type === Type.identifier && node.callee.value === 'definition') {
+            if (!node.arguments.length || node.arguments[0].type !== Type.string) {
+                return {}
+            }
+            const compound = {
+                $ref: `#/definitions/${node.arguments[0].value.split('.').join('/')}`
+            }
+            return compound
         }
-        return compound
     },
     [Type.array]: function (node, context) {
         const array = {
-            items: [this.router(node.value, context)]
+            items: this.router(node.value, context)
         }
         return array
     },
@@ -377,7 +387,6 @@ const visitor: Visitor = {
     },
     [Type.regular]: function (node, context) {
         return {
-            type: 'string',
             pattern: node.value.source
         }
     },
