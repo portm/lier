@@ -340,6 +340,10 @@ const testLang = `{
     # 筛选项值列表
     # values?: (definition('Map<string,string>') | 3)[]
     values?: (definition('Map<string,string>') | 3)[]
+    va?: a.b.c
+    vd?: enum {
+        a = 1, b
+    }
 }`
 console.log(lier.validatex({
     values: [1]
@@ -350,5 +354,11 @@ console.log(lier.validatex({
 console.log(JSON.stringify(ast2jsonschema(lier.parse(testLang)), null, 4))
 
 console.log(lier.stringify(jsonschema2ast(ast2jsonschema(lier.parse(testLang)))))
+
+console.log(lier.mockx(`type A {
+    a: A | 1
+    b: str
+}
+A`))
 
 console.timeEnd('parse')

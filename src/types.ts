@@ -246,9 +246,10 @@ function oneOf (...types): Type {
 }
 
 function anyOf (...types): Type {
-    return function (ctx: Context) {
-        if (ctx.root.isMock)
+    return function fn (ctx: Context) {
+        if (ctx.root.isMock) {
             return ctx.mock(types[_.random(0, types.length - 1)])
+        }
 
         const errors = ctx.root.errors
         let rets = []
@@ -338,16 +339,26 @@ function self (fn:  (self: any) => any): Type {
 function definition (paths: string[] | string): Type {
     return function fn (ctx: Context) {
         if (!_.isObjectLike(_.get(ctx, 'root.declares'))) {
-            throw 'not implemented type:' + paths
+            throw 'not implemented type: ' + paths
         }
         const type = _.get(ctx.root.declares, paths)
         if (ctx.root.isMock) {
-            return ctx.mock(type)
+            let cycled = true
+            if (ctx.root.nodes.has(fn)) {
+                const count = ctx.root.nodes.get(fn)
+                if (count > 0) {
+                    cycled = false
+                    ctx.root.nodes.set(fn, count - 1)
+                }
+            } else {
+                ctx.root.nodes.set(fn, 20)
+                cycled = false
+            }
+            return ctx.mock(type, cycled)
         }
 
-
         if (!type) {
-            ctx.root.errors.push(new LierError(ctx.path, ['not implemented type:' + paths]))
+            ctx.root.errors.push(new LierError(ctx.path, ['not implemented type: ' + paths]))
             return
         }
         ctx.validate(ctx.data, type)

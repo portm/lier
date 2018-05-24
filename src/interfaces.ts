@@ -74,7 +74,7 @@ export interface Context {
     path: Path
     root: Root
     validate: (data, type, path?: Path, root?: Root) => void
-    mock: (type, root?: Root) => any
+    mock: (type, cycled?: boolean, path?: Path, root?: Root) => any
 }
 
 export interface Type {

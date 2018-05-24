@@ -49,11 +49,11 @@ function mockObject (type, data, path: Path, root: Root) {
     }
 }
 
-function mock (type, data = this.data, path: Path = this.path, root: Root = this.root): any {
-    return walk(type, data, path, root)
+function mock (type, cycled = true, data = this.data, path: Path = this.path, root: Root = this.root): any {
+    return walk(type, data, path, root, cycled)
 }
 
-function walk (type, data, path: Path, root: Root) {
+function walk (type, data, path: Path, root: Root, cycled = true) {
     const key = getKey(path)
 
     if (_.isRegExp(type)) {
@@ -66,21 +66,27 @@ function walk (type, data, path: Path, root: Root) {
 
         const nodes = root.nodes
 
+        root.nodes = new Map(root.nodes)
+
         if (nodes.has(type)) {
             // when cycle is detected
-            data[key] = nodes.get(type)
+            if (cycled) {
+                return data[key] = nodes.get(type)
+            }
         } else {
-            data[key] = node
-
-            nodes.set(type, node)
-
-            if (isArray)
-                mockArray(type, node, path, root)
-            else if (type.constructor === Object)
-                mockObject(type, node, path, root)
-            else
-                data[key] = type
+            root.nodes.set(type, node)
         }
+
+        data[key] = node
+
+        if (isArray)
+            mockArray(type, node, path, root)
+        else if (type.constructor === Object)
+            mockObject(type, node, path, root)
+        else
+            data[key] = type
+
+        root.nodes = nodes
     } else {
         data[key] = type
     }
