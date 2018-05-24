@@ -25,6 +25,7 @@ export enum Type {
     comment,
     declare,
     path,
+    item,
 }
 
 export interface Node {

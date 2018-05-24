@@ -135,13 +135,26 @@ const visitor: Visitor = {
         }
     },
     [Type.member]: function (node, context) {
-        if (node.object.type === Type.identifier) {
-            return {
-                $ref: `#/definitions/${node.object.value}/${node.properties.map(path => path.value).join('/')}`
+        if (node.object.type !== Type.identifier) {
+            return {}
+        }
+        const path = []
+        for (const item of node.properties) {
+            const value = item.value
+            if (
+                value.type !== Type.null &&
+                value.type !== Type.boolean &&
+                value.type !== Type.number &&
+                value.type !== Type.string &&
+                value.type !== Type.identifier &&
+                value.type !== Type.regular
+            ) {
+                return {}
             }
+            path.push(item.value.value)
         }
         return {
-            $ref: `#/${node.properties.map(path => path.value).join('/')}`
+            $ref: `#/definitions/${node.object.value}/${path.join('/')}`
         }
     },
     [Type.binary]: function (node, context) {
