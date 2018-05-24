@@ -283,7 +283,8 @@ or
 ```js
 {
     type: enum {
-        1, 2
+        case1 = 1,
+        case2
     }
     value: match self.type {
         case 1 => 10
