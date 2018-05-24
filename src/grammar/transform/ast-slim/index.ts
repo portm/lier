@@ -1,30 +1,36 @@
-import { types } from '../../'
-import { Node, Type } from '../interface'
-import utils from '../utils'
+import { types } from '../../../'
+import { Node, Type, DeclareNode } from '../../interface'
+import utils from '../../utils'
+import {
+    SlimType,
+    ItemSlim,
+    Slim,
+    ConstSlim,
+    DeclareSlim,
+    ElementSlim,
+    AnySlim,
+    DefinitionSlim,
+    RegularSlim,
+    SelfSlim,
+    ArraySlim,
+    TupleSlim,
+    OneOfSlim,
+    AnyOfSlim,
+    AllOfSlim,
+    EnumSlim,
+    ObjectSlim,
+    PropertySlim,
+    BinarySlim,
+    UnarySlim
+}  from './interface'
 
 class Context {
 }
 
 interface Table {
-    start: (any) => any
-    router: (any, context: Context) => any
-    [x: number]: (node: any, context: Context) => any
-}
-
-export const slimTypes = {
-    unary: 'unary',
-    identifier: 'identifier',
-    oneOf: 'oneOf',
-    anyOf: 'anyOf',
-    allOf: 'allOf',
-    binary: 'binary',
-    object: 'object',
-    enum: 'enum',
-    any: 'any',
-    tuple: 'tuple',
-    array: 'array',
-    self: 'self',
-    regular: 'regular',
+    start: (any) => Slim
+    router: (any, context: Context) => Slim
+    [x: number]: (node: any, context: Context) => Slim
 }
 
 const table: Table = {
@@ -54,41 +60,44 @@ const table: Table = {
         const operator = node.operator
         const argument = table.router(node.argument, context)
         return {
-            type: slimTypes.unary,
+            type: SlimType.unary,
             operator,
             argument,
-        }
+        } as UnarySlim
     },
     [Type.member]: (node, context) => {
-        return {
-            type: slimTypes.identifier,
-            path: [node.object].concat(node.properties).map(prop => {
-                return table.router(prop, context)
-            })
+        const ret = {
+            type: SlimType.definition,
+            path: []
+        } as DefinitionSlim
+        const list = [node.object].concat(node.properties)
+        for (let prop of list) {
+            if (prop.type === Type.path) {
+                prop = prop.value
+            }
+            if (prop.type === Type.null ||
+                prop.type === Type.boolean ||
+                prop.type === Type.number ||
+                prop.type === Type.string ||
+                prop.type === Type.identifier ||
+                prop.type === Type.regular
+            ) {
+                ret.path.push(prop.value)
+                continue
+            }
+            return {
+                type: SlimType.any,
+            } as AnySlim
         }
-    },
-    [Type.path]: (node, context) => {
-        const prop = node.value
-        if (
-            node.computed ||
-            prop.type !== Type.null &&
-            prop.type !== Type.boolean &&
-            prop.type !== Type.number &&
-            prop.type !== Type.string &&
-            prop.type !== Type.identifier &&
-            prop.type !== Type.regular
-        ) {
-            return table.router(prop, context)
-        }
-        return prop.value
+        return ret
     },
     [Type.binary]: (node, context) => {
         const operator = node.operator
 
         if (operator === '|') {
             return {
-                type: slimTypes.anyOf,
-                value: utils.spreadMember(node, operator).map(item => {
+                type: SlimType.anyOf,
+                arguments: utils.spreadMember(node, operator).map(item => {
                     return table.router(item, context)
                 })
             }
@@ -96,25 +105,25 @@ const table: Table = {
 
         if (operator === '&') {
             return {
-                type: slimTypes.allOf,
-                value: utils.spreadMember(node, operator).map(item => {
+                type: SlimType.allOf,
+                arguments: utils.spreadMember(node, operator).map(item => {
                     return table.router(item, context)
                 })
             }
         }
 
         return {
-            type: slimTypes.binary,
+            type: SlimType.binary,
             operator,
             left: table.router(node.left, context),
             right: table.router(node.right, context),
-        }
+        } as BinarySlim
     },
     [Type.object]: (node, context) => {
         const ret = {
-            type: slimTypes.object,
+            type: SlimType.object,
             properties: [],
-        }
+        } as ObjectSlim
         let desc = ''
         let value
         for (const property of node.properties) {
@@ -129,9 +138,11 @@ const table: Table = {
             value = table.router(property.value, context)
 
             const item = {
+                name: key.value,
+                type: SlimType.property,
                 value,
                 optional: property.optional,
-            }
+            } as PropertySlim
 
             ret.properties.push(item)
 
@@ -148,19 +159,20 @@ const table: Table = {
             }
 
             if (desc) {
-                item['description'] = desc
+                item.description = desc
             }
             desc = ''
 
             if (key.type === Type.identifier && key.value === '$rest') {
-                ret['rest'] = item
+                ret.rest = item
                 continue
             }
 
             if (decorators.length) {
-                item['decorators'] = []
+                item.decorators = []
                 for (const decorate of decorators) {
-                    item['decorators'].push({
+                    item.decorators.push({
+                        type: SlimType.decorate,
                         name: decorate.name,
                         arguments: decorate.arguments.map(arg => {
                             if (
@@ -200,40 +212,67 @@ const table: Table = {
                 desc += arg.value
                 continue
             }
+            const item: ItemSlim = {
+                type: SlimType.item,
+                name: arg.name,
+            }
             if (arg.value) {
+                item.value = arg.value
                 index = arg.value
             } else {
                 arg.value = index ++
             }
-            args.push(arg)
+            args.push(item)
         }
         const ret = {
-            type: slimTypes.enum,
-            arguments: args,
-        }
+            type: SlimType.enum,
+            enums: args,
+        } as EnumSlim
         if (desc) {
-            ret['description'] = desc
+            ret.description = desc
         }
         desc = ''
         return ret
     },
     [Type.match]: (node, context) => {
         return {
-            type: slimTypes.any,
-        }
+            type: SlimType.any,
+        } as AnySlim
     },
     [Type.call]: (node, context) => {
         if (node.callee.value === 'oneOf') {
             return {
-                type: slimTypes.oneOf,
+                type: SlimType.oneOf,
                 arguments: node.arguments.map(arg => {
                     return table.router(arg, context)
                 })
-            }
+            } as OneOfSlim
+        }
+        if (node.callee.value === 'anyOf') {
+            return {
+                type: SlimType.anyOf,
+                arguments: node.arguments.map(arg => {
+                    return table.router(arg, context)
+                })
+            } as AnyOfSlim
+        }
+        if (node.callee.value === 'allOf') {
+            return {
+                type: SlimType.allOf,
+                arguments: node.arguments.map(arg => {
+                    return table.router(arg, context)
+                })
+            } as AllOfSlim
+        }
+        if (node.callee.value === 'definition' && node.arguments.length) {
+            return {
+                type: SlimType.definition,
+                path: node.arguments[0].value.split('.')
+            } as DefinitionSlim
         }
         return {
-            type: slimTypes.any,
-        }
+            type: SlimType.any,
+        } as AnySlim
     },
     [Type.tuple]: (node, context) => {
         const args = []
@@ -262,55 +301,56 @@ const table: Table = {
             }
         }
         return {
-            type: slimTypes.tuple,
-            value: args,
-        }
+            type: SlimType.tuple,
+            items: args,
+        } as TupleSlim
     },
     [Type.array]: (node, context) => {
         return {
-            type: slimTypes.array,
-            value: table.router(node.value, context),
-        }
+            type: SlimType.array,
+            items: table.router(node.value, context),
+        } as ArraySlim
     },
     [Type.self]: (node, context) => {
         return {
-            type: slimTypes.self,
-        }
+            type: SlimType.self,
+        } as SelfSlim
     },
     [Type.regular]: (node, context) => {
         return {
-            type: slimTypes.regular,
+            type: SlimType.regular,
             value: node.value,
-        }
+        } as RegularSlim
     },
     [Type.identifier]: (node, context) => {
         if (types[node.value]) {
             return {
                 type: node.value,
-            }
+            } as Slim
         }
         return {
-            type: slimTypes.identifier,
+            type: SlimType.definition,
             path: [node.value],
-        }
+        } as DefinitionSlim
     },
     [Type.rest]: (node, context) => {
         return {
-            type: slimTypes.any,
-        }
+            type: SlimType.any,
+        } as AnySlim
     },
     [Type.optional]: (node, context) => {
         return {
-            type: slimTypes.any,
-        }
+            type: SlimType.any,
+        } as AnySlim
     },
     [Type.element]: (node, context) => {
         let desc = ''
         let value
         const ret = {
+            type: SlimType.element,
             declares: [],
             assign: null,
-        }
+        } as ElementSlim
         for (const declare of node.declarations) {
             if (declare.type === Type.comment) {
                 if (desc) {
@@ -338,21 +378,30 @@ const table: Table = {
     },
     [Type.declare]: (node, context) => {
         return {
+            type: SlimType.declare,
             path: node.path.map(path => {
-                if (
-                    path.type !== Type.null &&
-                    path.type !== Type.boolean &&
-                    path.type !== Type.number &&
-                    path.type !== Type.string &&
-                    path.type !== Type.identifier &&
-                    path.type !== Type.regular
-                ) {
-                    return table.router(path, context)
-                }
                 return path.value
             }),
             value: table.router(node.value, context)
-        }
+        } as DeclareSlim
+    },
+    [Type.number]: (node, context) => {
+        return {
+            type: SlimType.const,
+            value: node.value,
+        } as ConstSlim
+    },
+    [Type.string]: (node, context) => {
+        return {
+            type: SlimType.const,
+            value: node.value,
+        } as ConstSlim
+    },
+    [Type.boolean]: (node, context) => {
+        return {
+            type: SlimType.const,
+            value: node.value,
+        } as ConstSlim
     },
 }
 
