@@ -1,6 +1,7 @@
 import * as _ from 'lodash'
 import { types } from '../../'
 import { Node, Type } from '../interface'
+import utils from '../utils'
 
 class Context {
     declares: {
@@ -26,10 +27,6 @@ const unpacking = func => {
         return types.self(func)
     }
     return func
-}
-
-const isObject = value => {
-    return value != null && typeof value === 'object'
 }
 
 interface Table {
@@ -83,7 +80,7 @@ const table: Table = {
             }
             throw new Error('not implemented unary:' + node.operator)
         }
-        if (isObject(argument)) {
+        if (utils.isObject(argument)) {
             if (node.operator === '!') {
                 return types.not(argument)
             }
@@ -403,6 +400,12 @@ const table: Table = {
                     if (node.callee.type === Type.member) {
                         const host = table.router(node.callee.object, context)
                         return callee(self).apply(host instanceof Function ? host(self) : self, args)
+                    }
+                    for (let i = 0; i < args.length; ++ i) {
+                        const item = args[i]
+                        if (ispacking(item)) {
+                            args[i] = item(self)
+                        }
                     }
                     return callee(self)(...args)
                 })
