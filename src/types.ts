@@ -164,7 +164,7 @@ function Enum (...values): Type {
 function optional (type): Type {
     return function (ctx: Context) {
         if (ctx.root.isMock)
-            return ctx.mock(type)
+            return [ctx.mock(type)][_.random(0, 1)]
 
 
         if (!_.isUndefined(ctx.data))
