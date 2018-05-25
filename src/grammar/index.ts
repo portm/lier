@@ -6,6 +6,7 @@ import {
     ast2lier as compile,
     json2ast as deduction,
 } from './transform'
+import check from './check'
 
 const parse = (input: string) => {
     try {
@@ -36,4 +37,5 @@ export {
     formatByAst,
     format,
     deduction,
+    check,
 }

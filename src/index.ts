@@ -1,5 +1,5 @@
 import * as _ from 'lodash'
-import { compile, deduction, format, formatByAst, parse, stringify } from './grammar'
+import { compile, deduction, format, formatByAst, parse, stringify, check as checkLang } from './grammar'
 import { Options, LierError } from './interfaces'
 import mock from './mock'
 import types from './types'
@@ -37,6 +37,10 @@ function mockx (lang, declares?) {
     return mock(tree.assignment, defaultDeps(tree.declares, declares))
 }
 
+function check (lang, declares?) {
+    return checkLang(parse(lang), declares)
+}
+
 export {
     validate,
     validatex,
@@ -51,4 +55,5 @@ export {
     format,
     formatByAst,
     deduction,
+    check,
 }

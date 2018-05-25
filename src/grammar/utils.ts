@@ -20,6 +20,9 @@ const utils = {
     isNumber: (value): boolean => {
         return !isNaN(+value)
     },
+    isObject: (value): boolean => {
+        return value != null && typeof value === 'object'
+    },
     MAX_INTEGER: Math.pow(2, 31) - 1,
     MIN_INTEGER: -Math.pow(2, 31),
     makeKey: (key): lier.Node => {
