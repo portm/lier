@@ -3,12 +3,17 @@ import { Node, Type } from '../interface'
 import style from './style'
 import utils from '../utils'
 
-class Context {
+export class Context {
     inkey = false
+    onFormat: (ast: Node, context: Context, html: string) => string
 }
 
-interface Table {
-    start: (any) => string
+export {
+    style,
+}
+
+export interface Formatter {
+    start: (any, context: Context) => string
     router: (any, context: Context) => string
     [x: number]: (node: any, context: Context) => string
 }
@@ -31,23 +36,23 @@ const htmlEscapes = {
     '\'': '&#39;',
 }
 
-const renderRange = (text, type) => {
+export const renderRange = (text, type) => {
     return TPL_RANGE.replace('{class}', type).replace('{range}', () => text)
 }
 
-const renderLine = (text) => {
+export const renderLine = (text) => {
     return TPL_LINE.replace('{ranges}', () => text)
 }
 
-const renderBlock = (text) => {
+export const renderBlock = (text) => {
     return TPL_BLOCK.replace('{ranges}', () => text)
 }
 
-const renderContainer = (text) => {
+export const renderContainer = (text) => {
     return TPL_CONTAINER.replace('{lines}', () => text)
 }
 
-const renderLayout = (text) => {
+export const renderLayout = (text) => {
     return TPL_LAYOUT.replace('{ranges}', () => text)
 }
 
@@ -57,16 +62,11 @@ const escape = (value) => {
     })
 }
 
-const isarray = (target) => {
-    return target && (target instanceof Array)
-}
-
-const table: Table = {
-    start: node => {
-        const context = new Context()
+export const formatter: Formatter = {
+    start: (node, context) => {
         const tags = []
         for (const item of node) {
-            let value = table.router(item, context)
+            let value = formatter.router(item, context)
             if (item.type === Type.comment) {
                 value = renderLayout(value)
             }
@@ -79,17 +79,18 @@ const table: Table = {
             return node
         }
 
-        const handler = table[node.type]
+        const handler = formatter[node.type]
 
         if (!handler) {
             return node
         }
 
-        return handler(node, context)
+        const html = handler(node, context)
+        return context.onFormat(node, context, html)
     },
     [Type.unary]: (node, context) => {
         const operator = node.operator
-        const argument = table.router(node.argument, context)
+        const argument = formatter.router(node.argument, context)
 
         const tags = []
         tags.push(renderRange(operator, style.operator))
@@ -98,20 +99,20 @@ const table: Table = {
 
     },
     [Type.member]: (node, context) => {
-        const tags = [table.router(node.object, context)]
+        const tags = [formatter.router(node.object, context)]
         if (node.object.type === Type.unary || node.object.type === Type.binary) {
             tags.unshift(renderRange('(', style.groupStart))
             tags.push(renderRange(')', style.groupEnd))
         }
         for (const property of node.properties) {
-            tags.push(table.router(property, context))
+            tags.push(formatter.router(property, context))
         }
         return tags.join('')
     },
     [Type.binary]: (node, context) => {
         const operator = node.operator
-        const right = table.router(node.right, context)
-        const tags = [table.router(node.left, context)]
+        const right = formatter.router(node.right, context)
+        const tags = [formatter.router(node.left, context)]
 
         if (node.left.type === Type.binary
             && utils.binaryOperators[node.left.operator] < utils.binaryOperators[operator]) {
@@ -139,23 +140,23 @@ const table: Table = {
             const inner = []
             for (const property of node.properties) {
                 if (property.type !== Type.property) {
-                    inner.push(renderLine(table.router(property, context)))
+                    inner.push(renderLine(formatter.router(property, context)))
                     continue
                 }
                 context.inkey = true
-                const key = table.router(property.key, context)
+                const key = formatter.router(property.key, context)
                 context.inkey = false
-                const value = table.router(property.value, context)
+                const value = formatter.router(property.value, context)
                 for (const decorate of property.decorators) {
                     if (decorate.type !== Type.decorator) {
-                        inner.push(renderLine(table.router(decorate, context)))
+                        inner.push(renderLine(formatter.router(decorate, context)))
                         continue
                     }
                     const line = []
                     const args = []
                     if (decorate.arguments.length) {
                         for (const item of decorate.arguments) {
-                            args.push(table.router(item, context))
+                            args.push(formatter.router(item, context))
                             args.push(renderRange(',', style[',']))
                         }
                         args.pop()
@@ -196,7 +197,7 @@ const table: Table = {
                 const item = node.arguments[i]
                 const line = []
                 if (item.type === Type.comment) {
-                    line.push(table.router(item, context))
+                    line.push(formatter.router(item, context))
                 } else {
                     line.push(renderRange(item.name, style.identifier))
                     if (item.value) {
@@ -217,7 +218,7 @@ const table: Table = {
         return tags.join('')
     },
     [Type.match]: (node, context) => {
-        const test = table.router(node.test, context)
+        const test = formatter.router(node.test, context)
         const tags = []
         tags.push(renderRange('match', style.match))
         tags.push(renderRange(test, style.matchTest))
@@ -226,14 +227,14 @@ const table: Table = {
             const inner = []
             for (const cs of node.cases) {
                 if (cs.type === Type.comment) {
-                    inner.push(renderLine(table.router(cs, context)))
+                    inner.push(renderLine(formatter.router(cs, context)))
                     continue
                 }
                 const line = []
                 line.push(renderRange('case', style.case))
-                line.push(table.router(cs.test, context))
+                line.push(formatter.router(cs.test, context))
                 line.push(renderRange('=>', style.operator))
-                line.push(table.router(cs.value, context))
+                line.push(formatter.router(cs.value, context))
                 inner.push(renderLine(line.join('')))
             }
             tags.push(renderBlock(inner.join('')))
@@ -242,7 +243,7 @@ const table: Table = {
         return tags.join('')
     },
     [Type.call]: (node, context) => {
-        const tags = [table.router(node.callee, context)]
+        const tags = [formatter.router(node.callee, context)]
         if (node.callee.type === Type.unary || node.callee.type === Type.binary) {
             tags.unshift(renderRange('(', style.groupStart))
             tags.push(renderRange(')', style.groupEnd))
@@ -250,7 +251,7 @@ const table: Table = {
         tags.push(renderRange('(', style.groupStart))
         if (node.arguments.length) {
             for (const arg of node.arguments) {
-                tags.push(table.router(arg, context))
+                tags.push(formatter.router(arg, context))
                 tags.push(renderRange(',', style[',']))
             }
             tags.pop()
@@ -259,7 +260,7 @@ const table: Table = {
         return tags.join('')
     },
     [Type.array]: (node, context) => {
-        const tags = [table.router(node.value, context)]
+        const tags = [formatter.router(node.value, context)]
         if (node.value.type === Type.unary || node.value.type === Type.binary) {
             tags.unshift(renderRange('(', style.groupStart))
             tags.push(renderRange(')', style.groupEnd))
@@ -277,7 +278,7 @@ const table: Table = {
             for (let i = node.value.length - 1; i >= 0; -- i) {
                 const item = node.value[i]
                 const line = []
-                line.push(table.router(item, context))
+                line.push(formatter.router(item, context))
                 if (item.type !== Type.comment) {
                     if (!first) {
                         line.push(renderRange(',', style[',']))
@@ -305,14 +306,14 @@ const table: Table = {
         const ret = []
         if (node.computed) {
             ret.push(renderRange('[', style.arrayStart))
-            ret.push(table.router(node.value, context))
+            ret.push(formatter.router(node.value, context))
             ret.push(renderRange(']', style.arrayEnd))
         } else {
             ret.push(renderRange('.', style['.']))
             if (node.value.type === Type.identifier) {
                 ret.push(renderRange(node.value.value, style.path))
             } else {
-                ret.push(table.router(node.value, context))
+                ret.push(formatter.router(node.value, context))
             }
         }
         return ret.join('')
@@ -339,12 +340,12 @@ const table: Table = {
     [Type.rest]: (node, context) => {
         const tags = []
         tags.push(renderRange('...', style['...']))
-        tags.push(table.router(node.value, context))
+        tags.push(formatter.router(node.value, context))
         return tags.join('')
     },
     [Type.optional]: (node, context) => {
         const tags = []
-        tags.push(table.router(node.value, context))
+        tags.push(formatter.router(node.value, context))
         tags.push(renderRange('?', style['?']))
         return tags.join('')
     },
@@ -352,12 +353,12 @@ const table: Table = {
         const tags = []
         for (const declare of node.declarations) {
             if (declare.type === Type.comment) {
-                tags.push(renderLayout(table.router(declare, context)))
+                tags.push(renderLayout(formatter.router(declare, context)))
                 continue
             }
-            tags.push(table.router(declare, context))
+            tags.push(formatter.router(declare, context))
         }
-        tags.push(renderLayout(table.router(node.assignment, context)))
+        tags.push(renderLayout(formatter.router(node.assignment, context)))
         return tags.join('')
     },
     [Type.comment]: (node, context) => {
@@ -376,16 +377,18 @@ const table: Table = {
                 name.push(renderRange(path.value, style.path))
             } else {
                 name.push(renderRange('[', style.arrayStart))
-                name.push(table.router(path, context))
+                name.push(formatter.router(path, context))
                 name.push(renderRange(']', style.arrayEnd))
             }
         }
         tags.push(renderRange(name.join(''), style.typePath))
-        tags.push(table.router(node.value, context))
+        tags.push(formatter.router(node.value, context))
         return renderLayout(tags.join(''))
     },
 }
 
 export default (ast: Node[]): string => {
-    return table.start(ast)
+    const context = new Context()
+    context.onFormat = (ast, context, html) => html
+    return formatter.start(ast, context)
 }
