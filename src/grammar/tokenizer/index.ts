@@ -288,13 +288,11 @@ const tokenizer = (style: Style) => {
                 return style.match
             }
 
-            const identifier = /[$a-zA-Z_]/
+            const identifier = /[$a-zA-Z_\u4e00-\u9fa5]/
             if (identifier.test(peek)) {
                 const part = stream.string.slice(stream.pos)
 
-                if (/^this(?=[^-$_0-9a-zA-Z]|$)/.test(part)) {
-                    context.style = style.this
-                } else if (/^self(?=[^-$_0-9a-zA-Z]|$)/.test(part)) {
+                if (/^self(?=[^-$_0-9a-zA-Z\u4e00-\u9fa5]|$)/.test(part)) {
                     context.style = style.self
                 } else {
                     context.style = style.identifier
@@ -509,7 +507,7 @@ const tokenizer = (style: Style) => {
         },
 
         [State.identifier]: (stream, context) => {
-            const regex = /^[$a-zA-Z_][A-Za-z0-9$_-]*/
+            const regex = /^[$a-zA-Z_\u4e00-\u9fa5][-A-Za-z0-9$_\u4e00-\u9fa5]*/
             if (stream.match(regex)) {
                 context.state.pop()
                 return context.style
