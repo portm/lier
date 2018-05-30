@@ -81,6 +81,7 @@ const typeMapping = {
     uint128: 'number',
     bool: 'boolean',
     float: 'number',
+    long: 'number',
     short: 'integer',
     byte: 'integer',
     oneOf: 'oneOf',
