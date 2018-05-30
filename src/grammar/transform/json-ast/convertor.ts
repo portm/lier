@@ -165,7 +165,7 @@ const convertor: Convertor = {
         const oldKeys = Object.keys(context.brother || {})
         const properties = []
         if (context.brother && keys.length === oldKeys.length) {
-            let equals = []
+            const equals = []
             // TODO: fix unstable sort
             for (const key of keys) {
                 const node = convertor.router({

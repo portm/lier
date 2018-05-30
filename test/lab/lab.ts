@@ -4,14 +4,14 @@ import ast2jsonschema from '../../src/grammar/transform/ast-jsonschema'
 import ast2slim from '../../src/grammar/transform/ast-slim'
 import dtest from '../../src/grammar/transform/json-ast/decorator'
 
-const base = lier.parse(`{
-    a: ({
+const base = lier.parse(`
+    {
         @_('d1')
         a: any
         @_('d2')
         c: any
-    })[]
-}[]`)
+    }[]
+`)
 
 
 
@@ -217,16 +217,17 @@ console.log(lier.stringify(lier.parse(arrayTest)))
 
 console.log(lier.format(arrayTest))
 
-console.log(lier.stringify(lier.deduction([
+console.log(lier.stringify(lier.deduction(
+    [
     {
-        a: [
-            // {
-            //     b: '123',
-            // },
-            // {
-            //     a: 1,
-            //     b: '213',
-            // },
+        x: [
+            {
+                b: '123',
+            },
+            {
+                a: 1,
+                b: '213',
+            },
             {
                 a: 1,
             },
@@ -236,43 +237,76 @@ console.log(lier.stringify(lier.deduction([
         ]
     },
     {
-        a: [
-            // {
-            //     b: '123',
-            // },
-            // {
-            //     a: 1,
-            //     b: '213',
-            // },
+        x: [
+            {
+                b: '123',
+            },
+            {
+                a: 1,
+                b: '213',
+            },
             {
                 a: 1,
             },
-            // {
-            //     b: '123',
-            // }
+            {
+                b: '123',
+                c: false
+            },
+            {
+                f: 1,
+            },
+            {
+                g: 1,
+            },
+            {
+                f: 1,
+            },
+            {
+                f: 2,
+                g: 1,
+            },
         ]
     }
-], base)))
+]
+,base
+)))
 
-console.log(JSON.stringify(ast2slim(schemaAst), null, 4))
-// console.log(lier.stringify(lier.deduction([
-//     {
-//         a: 1,
-//         b: '2'
-//     },
-//     {
-//         a: 1
-//     },
-//     {
-//         a: 2
-//     },
-// ])))
-// console.log(lier.stringify(lier.deduction([
-//     {
-//         a: 1,
-//         c: 'any'
-//     }
-// ], base)))
+
+console.log(lier.stringify(lier.deduction([
+    {
+        a: [{
+            a: '1',
+            b: 1,
+        }],
+        b: true,
+    },
+    {
+        a: [{
+            a: 'str',
+            c: 1,
+        }]
+    }
+])))
+
+// console.log(JSON.stringify(ast2slim(schemaAst), null, 4))
+console.log(lier.stringify(lier.deduction([
+    {
+        a: 1,
+        b: '2'
+    },
+    {
+        a: 1
+    },
+    {
+        a: 2
+    },
+], base)))
+console.log(lier.stringify(lier.deduction([
+    {
+        a: 1,
+        c: 'any'
+    }
+], base)))
 
 console.log(lier.validatex([
     {
