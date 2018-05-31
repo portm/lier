@@ -358,7 +358,37 @@ const visitor: Visitor = {
         return array
     },
     [Type.tuple]: function (node, context) {
-        return {}
+        const tuples = []
+        let desc = ''
+        for (const item of node.value) {
+            if (item.type === Type.comment) {
+                if (desc) {
+                    desc += '\n' + item.value
+                } else {
+                    desc = item.value
+                }
+                continue
+            }
+            const value = this.router(item, context)
+            tuples.push(value)
+            if (desc) {
+                value.description = desc
+                desc = ''
+            }
+        }
+        if (desc && tuples.length) {
+            const last = tuples[tuples.length - 1]
+            if (last.description) {
+                last.description += '\n' + desc
+            } else {
+                last.description = desc
+            }
+        }
+        return {
+            items: tuples,
+            minItems: tuples.length,
+            maxItems: tuples.length,
+        }
     },
     [Type.identifier]: function (node, context) {
         if (node.value === 'never') {

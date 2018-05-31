@@ -166,10 +166,21 @@ const convertArray = (data, context: Context) => {
         } as lier.TupleNode
     }
     convertExport(data, context)
+    const items = data.items
+    if (utils.getType(items) !== 'Array') {
+        return {
+            type: Type.array,
+            value: convert(items, context),
+        } as lier.ArrayNode
+    }
+    const tuples = []
+    for (const item of items) {
+        tuples.push(convert(item, context))
+    }
     return {
-        type: Type.array,
-        value: convert(data.items, context),
-    } as lier.ArrayNode
+        type: Type.tuple,
+        value: tuples,
+    } as lier.TupleNode
 }
 
 const convertObject = (data, context: Context) => {

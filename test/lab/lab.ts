@@ -397,4 +397,8 @@ console.log(lier.mockx(`type A {
 }
 A`))
 
+console.log(JSON.stringify(ast2jsonschema(lier.parse(`['a', 1]`)), null, 4))
+
+console.log(lier.stringify(jsonschema2ast(ast2jsonschema(lier.parse(`['a', 1]`)))))
+
 console.timeEnd('parse')
