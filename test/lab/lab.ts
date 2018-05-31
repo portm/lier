@@ -288,6 +288,15 @@ console.log(lier.stringify(lier.deduction([
     }
 ])))
 
+console.log(lier.stringify(lier.deduction([
+    {
+        1: 1
+    },
+    {
+        2: 1
+    }
+])))
+
 // console.log(JSON.stringify(ast2slim(schemaAst), null, 4))
 console.log(lier.stringify(lier.deduction([
     {
