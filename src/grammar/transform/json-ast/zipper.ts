@@ -6,6 +6,7 @@ const Type = lier.Type
 
 interface Context {
     type: any
+    rate: number
 }
 
 interface Zipper {
@@ -16,11 +17,23 @@ interface Zipper {
 
 const zipper: Zipper = {
     start: (node, context) => {
+        const ret = []
         for (const item of node) {
             if (item.type === Type.element) {
-                zipper.router(item, context)
+                const merge = zipper.router(item, {
+                    type: null,
+                    rate: context.rate,
+                })
+                if (merge) {
+                    ret.push(merge)
+                } else {
+                    ret.push(item)
+                }
+            } else {
+                ret.push(item)
             }
         }
+        return ret
     },
     router: (node, context) => {
         if (!node) {
@@ -30,13 +43,28 @@ const zipper: Zipper = {
         if (!handler) {
             return null
         }
+        // merge a | b, b => a | b
+        if (context.type && context.type.type === Type.binary && node.type !== Type.binary) {
+            return zipper.router(context.type, {
+                type: node,
+                rate: context.rate,
+            })
+        }
         return handler(node, context)
     },
     [Type.unary]: (node, context) => {
         if (!context.type) {
-            zipper.router(node.argument, {
+            const merge = zipper.router(node.argument, {
                 type: null,
+                rate: context.rate,
             })
+            if (merge) {
+                return {
+                    type: Type.unary,
+                    operator: node.operator,
+                    argument: merge,
+                } as lier.UnaryNode
+            }
             return
         }
         if (node.type !== context.type.type) {
@@ -47,6 +75,7 @@ const zipper: Zipper = {
         }
         const argument = zipper.router(node.argument, {
             type: context.type.argument,
+            rate: context.rate,
         })
         if (!argument) {
             return
@@ -55,7 +84,7 @@ const zipper: Zipper = {
             type: Type.unary,
             operator: node.operator,
             argument,
-        }
+        } as lier.UnaryNode
     },
     [Type.member]: (node, context) => {
         if (!context.type) {
@@ -67,13 +96,18 @@ const zipper: Zipper = {
         return node
     },
     [Type.binary]: (node, context) => {
-        const leftMembers = utils.spreadMember(node, node.operator)
-        // zip last node
-        const first = zipper.router(leftMembers[leftMembers.length - 1], {
-            type: null,
-        })
-        if (first) {
-            leftMembers[leftMembers.length - 1] = first
+        let leftMembers = utils.spreadMember(node, node.operator)
+        let ret = false
+        for (let i = 0; i < leftMembers.length; ++ i) {
+            const item = leftMembers[i]
+            const merge = zipper.router(item, {
+                type: null,
+                rate: context.rate,
+            })
+            if (merge) {
+                ret = true
+                leftMembers[i] = merge
+            }
         }
         let deep = true
         while (deep) {
@@ -89,6 +123,7 @@ const zipper: Zipper = {
                     }
                     const merge = zipper.router(curr, {
                         type: prev,
+                        rate: context.rate,
                     })
                     if (merge) {
                         deep = true
@@ -99,7 +134,10 @@ const zipper: Zipper = {
                 }
             }
         }
-        const reduces = leftMembers.filter(i => !!i)
+        let reduces = leftMembers.filter(i => !!i)
+        if (reduces.length < leftMembers.length) {
+            ret = true
+        }
         let flag = context.type
         if (flag) {
             const rightReduces = reduces.slice()
@@ -111,6 +149,7 @@ const zipper: Zipper = {
                     const curr = rightReduces[i]
                     const merge = zipper.router(curr, {
                         type: prev,
+                        rate: context.rate,
                     })
                     if (merge) {
                         rightReduces[i] = merge
@@ -122,56 +161,52 @@ const zipper: Zipper = {
                     flag = false
                 }
             }
+            ret = flag
             if (flag) {
-                if (rightReduces.length === 1) {
-                    return rightReduces[0]
-                } else if (rightReduces.length > 1) {
-                    return rightReduces.reduce((left, right) => {
-                        return {
-                            type: Type.binary,
-                            operator: '|',
-                            left,
-                            right,
-                        }
-                    })
-                }
-                return
+                reduces = rightReduces
             }
         }
-        // replace node
+        if (!ret) {
+            return
+        }
         if (reduces.length === 1) {
-            for (const key of Object.keys(node)) {
-                delete node[key]
-            }
-            _.assign(node, reduces[0])
+            return reduces[0]
         } else if (reduces.length > 1) {
-            const reduce: any = reduces.reduce((left, right) => {
+            return reduces.reduce((left, right) => {
                 return {
                     type: Type.binary,
                     operator: '|',
                     left,
                     right,
-                }
+                } as lier.BinaryNode
             })
-            node.left = reduce.left
-            node.right = reduce.right
         }
     },
     [Type.object]: (node, context) => {
         let merged = {}
         let flag = false
         for (const prop of node.properties) {
+            if (prop.type === Type.comment) {
+                continue
+            }
             const merge = zipper.router(prop.value, {
                 type: null,
+                rate: context.rate,
             })
             if (merge) {
                 flag = true
-                merged[prop.key.value] = merge
+                merged[prop.key.value] = {
+                    type: Type.property,
+                    decorators: prop.decorators,
+                    optional: prop.optional,
+                    key: prop.key,
+                    value: merge,
+                } as lier.PropertyNode
             } else {
                 merged[prop.key.value] = prop
             }
         }
-        const mergeKeyNode = mergeNumberKeys(merged)
+        const mergeKeyNode = mergeNumberKeys(merged, context)
         if (mergeKeyNode) {
             flag = true
             node = mergeKeyNode
@@ -188,9 +223,6 @@ const zipper: Zipper = {
             return
         }
         if (node.type !== context.type.type) {
-            if (flag) {
-                return node
-            }
             return
         }
         merged = {}
@@ -213,7 +245,8 @@ const zipper: Zipper = {
                 continue
             }
             const merge = zipper.router(item.value, {
-                type: prop.value
+                type: prop.value,
+                rate: context.rate,
             })
             if (!merge) {
                 continue
@@ -224,41 +257,74 @@ const zipper: Zipper = {
                 optional: prop.optional || item.optional,
                 key: item.key,
                 value: merge,
-            }
+            } as lier.PropertyNode
         }
         const leftKeys = Object.keys(left)
         const rightKeys = Object.keys(right)
         let mergeKeys = Object.keys(merged)
         // >= 50% merge
-        if (mergeKeys.length / Math.max(leftKeys.length, rightKeys.length) < .5) {
+        if (mergeKeys.length / Math.max(leftKeys.length, rightKeys.length) < context.rate) {
             return
         }
         const diffLeftKeys = _.difference(leftKeys, mergeKeys)
-        const diffRightKeys = _.difference(rightKeys, mergeKeys)
         for (const key of diffLeftKeys) {
-            const item = left[key]
-            if (!right[key]) {
+            const leftItem = left[key]
+            const rightItem = right[key]
+            if (!rightItem) {
                 merged[key] = {
                     type: Type.property,
-                    decorators: item.decorators,
+                    decorators: leftItem.decorators,
                     optional: true,
-                    key: item.key,
-                    value: item.value,
-                }
+                    key: leftItem.key,
+                    value: leftItem.value,
+                } as lier.PropertyNode
+                continue
+            }
+            if (leftItem.value.type === Type.identifier && rightItem.value.type === Type.identifier) {
+                merged[key] = {
+                    type: Type.property,
+                    decorators: leftItem.decorators,
+                    optional: leftItem.optional || rightItem.optional,
+                    key: leftItem.key,
+                    value: {
+                        type: Type.binary,
+                        operator: '|',
+                        left: leftItem.value,
+                        right: rightItem.value,
+                    } as lier.BinaryNode,
+                } as lier.PropertyNode
                 continue
             }
             return
         }
+        mergeKeys = Object.keys(merged)
+        const diffRightKeys = _.difference(rightKeys, mergeKeys)
         for (const key of diffRightKeys) {
-            const item = right[key]
+            const leftItem = right[key]
+            const rightItem = left[key]
             if (!left[key]) {
                 merged[key] = {
                     type: Type.property,
-                    decorators: item.decorators,
+                    decorators: leftItem.decorators,
                     optional: true,
-                    key: item.key,
-                    value: item.value,
-                }
+                    key: leftItem.key,
+                    value: leftItem.value,
+                } as lier.PropertyNode
+                continue
+            }
+            if (leftItem.value.type === Type.identifier && rightItem.value.type === Type.identifier) {
+                merged[key] = {
+                    type: Type.property,
+                    decorators: leftItem.decorators,
+                    optional: leftItem.optional || rightItem.optional,
+                    key: leftItem.key,
+                    value: {
+                        type: Type.binary,
+                        operator: '|',
+                        left: leftItem.value,
+                        right: rightItem.value,
+                    } as lier.BinaryNode,
+                } as lier.PropertyNode
                 continue
             }
             return
@@ -266,7 +332,7 @@ const zipper: Zipper = {
         return {
             type: Type.object,
             properties: _.values(merged),
-        }
+        } as lier.ObjectNode
     },
     [Type.enum]: (node, context) => {
         if (!context.type) {
@@ -306,51 +372,135 @@ const zipper: Zipper = {
     },
     [Type.array]: (node, context) => {
         if (!context.type) {
-            zipper.router(node.value, {
+            const merge = zipper.router(node.value, {
                 type: null,
+                rate: context.rate,
             })
+            if (merge) {
+                return {
+                    type: Type.array,
+                    value: merge,
+                } as lier.ArrayNode
+            }
             return
         }
         if (node.type !== context.type.type) {
             return
         }
-        const value = zipper.router(node.value, {
+        const merge = zipper.router(node.value, {
             type: context.type.value,
+            rate: context.rate,
         })
-        if (!value) {
-            return
-        }
-        return {
-            type: Type.array,
-            value,
+        if (merge) {
+            return {
+                type: Type.array,
+                value: merge,
+            } as lier.ArrayNode
         }
     },
     [Type.tuple]: (node, context) => {
+        let ret = false
+        const tuples = []
+        for (const item of node.value) {
+            if (item.type === Type.comment) {
+                continue
+            }
+            const merge = zipper.router(item, {
+                type: null,
+                rate: context.rate,
+            })
+            if (merge) {
+                ret = true
+                tuples.push(merge)
+            } else {
+                tuples.push(item)
+            }
+        }
         if (!context.type) {
             return
         }
         if (node.type !== context.type.type) {
             return
         }
-        return node
+        if (context.type.value.length === node.value.length) {
+            let flag = true
+            for (let i = 0; i < node.value.length; ++ i) {
+                const left = node.value[i]
+                const right = context.type.value[i]
+                const merge = zipper.router(left, {
+                    type: right,
+                    rate: context.rate,
+                })
+                if (merge) {
+                    tuples[i] = merge
+                } else {
+                    flag = false
+                }
+            }
+            ret = flag
+        }
+        if (ret) {
+            return {
+                type: Type.tuple,
+                value: tuples,
+            } as lier.TupleNode
+        }
     },
     [Type.rest]: (node, context) => {
         if (!context.type) {
+            const merge = zipper.router(node.value, {
+                type: null,
+                rate: context.rate,
+            })
+            if (merge) {
+                return {
+                    type: Type.optional,
+                    value: merge,
+                }
+            }
             return
         }
         if (node.type !== context.type.type) {
             return
         }
-        return node
+        const merge = zipper.router(node.value, {
+            type: context.type.value,
+            rate: context.rate,
+        })
+        if (merge) {
+            return {
+                type: Type.optional,
+                value: merge,
+            }
+        }
     },
     [Type.optional]: (node, context) => {
         if (!context.type) {
+            const merge = zipper.router(node.value, {
+                type: null,
+                rate: context.rate,
+            })
+            if (merge) {
+                return {
+                    type: Type.optional,
+                    value: merge,
+                }
+            }
             return
         }
         if (node.type !== context.type.type) {
             return
         }
-        return node
+        const merge = zipper.router(node.value, {
+            type: context.type.value,
+            rate: context.rate,
+        })
+        if (merge) {
+            return {
+                type: Type.optional,
+                value: merge,
+            }
+        }
     },
     [Type.identifier]: (node, context) => {
         if (!context.type) {
@@ -365,60 +515,70 @@ const zipper: Zipper = {
         return node
     },
     [Type.element]: (node, context) => {
-        zipper.router(node.assignment, {
+        const merge = zipper.router(node.assignment, {
             type: null,
+            rate: context.rate,
         })
+        if (merge) {
+            return {
+                type: Type.element,
+                declarations: node.declarations,
+                assignment: merge,
+            } as lier.ElementNode
+        }
     },
 }
 
 // merge only number keys
-const mergeNumberKeys = (merged) => {
+const mergeNumberKeys = (merged, context) => {
     const mergeKeys = Object.keys(merged)
-        let mergeNumberKeys = true
-        for (const key of mergeKeys) {
-            if (!/^\d+$/.test(key)) {
-                mergeNumberKeys = false
-            }
+    let mergeNumberKeys = true
+    for (const key of mergeKeys) {
+        if (!/^\d+$/.test(key)) {
+            mergeNumberKeys = false
         }
-        if (!mergeNumberKeys) {
-            return
-        }
-        const numberMerged = {}
-        let first = null
-        for (const key of mergeKeys) {
-            const item = merged[key]
-            if (first) {
-                const merge = zipper.router(first.value, {
-                    type: item.value
-                })
-                if (!merge) {
-                    return
-                }
-                first.value = merge
-            } else {
-                first = {
-                    type: Type.property,
-                    optional: item.optional,
-                    decorators: item.decorators,
-                    key: {
-                        type: Type.regular,
-                        value: /^\d+$/,
-                    },
-                    value: item.value,
-                }
-            }
-        }
+    }
+    if (!mergeNumberKeys) {
+        return
+    }
+    const numberMerged = {}
+    let first = null
+    for (const key of mergeKeys) {
+        const item = merged[key]
         if (first) {
-            return {
-                type: Type.object,
-                properties: [first],
+            const merge = zipper.router(first.value, {
+                type: item.value,
+                rate: context.rate,
+            })
+            if (!merge) {
+                return
+            }
+            first.value = merge
+        } else {
+            first = {
+                type: Type.property,
+                optional: item.optional,
+                decorators: item.decorators,
+                key: {
+                    type: Type.regular,
+                    value: /^\d+$/,
+                },
+                value: item.value,
             }
         }
+    }
+    if (first) {
+        return {
+            type: Type.object,
+            properties: [first],
+        }
+    }
 }
 
-export default (node: lier.Node[]): void => {
+export default (node: lier.Node[], rate: number = 0.5): any => {
     const context: Context = {
-        type: null
+        type: null,
+        rate,
     }
-    zipper.start(node, context)
+    return zipper.start(node, context)
 }

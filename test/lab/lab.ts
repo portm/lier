@@ -268,7 +268,7 @@ console.log(lier.stringify(lier.deduction(
         ]
     }
 ]
-,base
+,{ base }
 )))
 
 
@@ -309,13 +309,13 @@ console.log(lier.stringify(lier.deduction([
     {
         a: 2
     },
-], base)))
+], { base })))
 console.log(lier.stringify(lier.deduction([
     {
         a: 1,
         c: 'any'
     }
-], base)))
+], { base })))
 
 console.log(lier.validatex([
     {
