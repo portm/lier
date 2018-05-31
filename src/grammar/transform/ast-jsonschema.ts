@@ -385,6 +385,7 @@ const visitor: Visitor = {
             }
         }
         return {
+            type: 'array',
             items: tuples,
             minItems: tuples.length,
             maxItems: tuples.length,
