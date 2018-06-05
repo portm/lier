@@ -1,6 +1,6 @@
 {
   "name": "lier",
-  "version": "2.1.10",
+  "version": "2.1.11",
   "description": "a type validator",
   "main": "index.js",
   "scripts": {
