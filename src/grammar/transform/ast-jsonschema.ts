@@ -177,6 +177,16 @@ const visitor: Visitor = {
             }
         }
 
+        if (left.enum && (left.enum instanceof Array) && operator === '|') {
+            if (right.enum && (right.enum instanceof Array)) {
+                left.enum = left.enum.concat(right.enum)
+                return left
+            } else if (right.hasOwnProperty('const')) {
+                left.enum.push(right.const)
+                return left
+            }
+        }
+
         if (left.allOf && (left.allOf instanceof Array) && operator === '&') {
             if (right.allOf && (right.allOf instanceof Array)) {
                 left.allOf = left.allOf.concat(right.allOf)
@@ -192,12 +202,25 @@ const visitor: Visitor = {
             return right
         }
 
+        if (right.enum && (right.enum instanceof Array) && operator === '|' && left.hasOwnProperty('const')) {
+            right.enum.push(left.const)
+            return right
+        }
+
         if (right.allOf && (right.allOf instanceof Array) && operator === '&') {
             right.allOf.push(left)
             return right
         }
 
         if (operator === '|') {
+            if (left.hasOwnProperty('const') && right.hasOwnProperty('const')) {
+                return {
+                    enum: [
+                        left.const,
+                        right.const
+                    ]
+                }
+            }
             return {
                 anyOf: [
                     left,
