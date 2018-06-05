@@ -1,0 +1,105 @@
+.cm-s-lier .cm-key-identifier {
+    color: #b52ead;
+}
+
+.cm-s-lier .cm-key-regex {
+    color: #3dc100;
+}
+
+.cm-s-lier .cm-key-string {
+    color: #b52ead;
+}
+
+.cm-s-lier .cm-key-number {
+    color: #03A9F4;
+}
+
+.cm-s-lier .cm-key-dollar {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.cm-s-lier .cm-identifier {
+    color: #5d73d4;
+}
+
+.cm-s-lier .cm-regex {
+    color: #3dc100;
+}
+
+.cm-s-lier .cm-string {
+    color: #92af0f;
+}
+
+.cm-s-lier .cm-number {
+    color: #de498a;
+}
+
+.cm-s-lier .cm-match {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.cm-s-lier .cm-optional {
+    color: #f00;
+}
+
+.cm-s-lier .cm-enum {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.cm-s-lier .cm-this {
+    color: #8e3eef;
+    font-weight: bold;
+}
+
+.cm-s-lier .cm-self {
+    color: #ef943e;
+    font-weight: bold;
+}
+
+.cm-s-lier .cm-path {
+    color: #459e8c;
+}
+
+.cm-s-lier .cm-case {
+    color: #bb01ff;
+}
+
+.cm-s-lier .cm-colon,
+.cm-s-lier .cm-spread {
+    color: #333;
+}
+
+.cm-s-lier .cm-operator {
+    color: #333;
+}
+
+.cm-s-lier .cm-decorate {
+    color: #a26d23;
+}
+
+.cm-s-lier .cm-at {
+    color: #a26d23;
+}
+
+.cm-s-lier .cm-group {
+    color: #333;
+}
+
+.cm-s-lier .cm-array {
+    color: #333;
+}
+
+.cm-s-lier .cm-block {
+    color: #333;
+}
+
+.cm-s-lier .cm-comment {
+    color: #aaa;
+}
+
+.cm-s-lier .cm-error {
+    color: #d00;
+}
