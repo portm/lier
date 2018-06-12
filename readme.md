@@ -1,5 +1,6 @@
 ### [在线 Demo](http://lier.vane.im/#/)
 
+[![npm version](https://badge.fury.io/js/lier.svg)](https://badge.fury.io/js/lier)
 
 <h1 class="third" id="lier">Lier 类型语言简介</h1>
 
