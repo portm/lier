@@ -214,6 +214,14 @@ const table: Table = {
         return null
     },
     [Type.call]: (node, context) => {
+        if (
+            node.callee.type === Type.identifier
+            && node.callee.value === 'definition'
+            && node.arguments.length
+        ) {
+            context.using[node.value] = table.router(node.arguments[0], context)
+            return null
+        }
         const callee = table.router(node.callee, context)
         if (callee instanceof Function) {
             for (const arg of node.arguments) {
