@@ -244,7 +244,7 @@ const table: Table = {
         if (!types.hasOwnProperty(node.value)) {
             context.using[node.value] = node.value
         }
-        return null
+        return types[node.value]
     },
     [Type.path]: (node, context) => {
         if (!node.computed && node.value.type === Type.identifier) {
