@@ -71,6 +71,7 @@ const typeMapping = {
     int: 'integer',
     uint: 'integer',
     number: 'number',
+    double: 'number',
     int8: 'integer',
     int32: 'integer',
     int64: 'number',
@@ -421,10 +422,15 @@ const visitor: Visitor = {
         if (node.value === 'any') {
             return {}
         }
-        if (typeMapping[node.value]) {
-            return {
-                type: typeMapping[node.value],
+        const mapping = typeMapping[node.value]
+        if (mapping) {
+            const ret = {
+                type: mapping,
             }
+            if (mapping !== node.value) {
+                ret['format'] = node.value
+            }
+            return ret
         }
         return {
             $ref: `#/definitions/${node.value}`,
