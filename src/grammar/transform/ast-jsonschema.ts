@@ -73,6 +73,7 @@ const typeMapping = {
     number: 'number',
     double: 'number',
     int8: 'integer',
+    int16: 'integer',
     int32: 'integer',
     int64: 'number',
     int128: 'number',
@@ -427,7 +428,7 @@ const visitor: Visitor = {
             const ret = {
                 type: mapping,
             }
-            if (mapping !== node.value) {
+            if (mapping !== node.value && node.value !== 'int') {
                 ret['format'] = node.value
             }
             return ret
