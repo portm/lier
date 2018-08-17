@@ -389,6 +389,7 @@ const tokenizer = (style: Style) => {
             const peek = stream.peek()
 
             if (peek === '@') {
+                context.state.push(State.empty)
                 context.state.push(State.decorateStart)
                 stream.next()
                 return style['@']
@@ -401,6 +402,7 @@ const tokenizer = (style: Style) => {
                 return style.blockEnd
             }
 
+            context.state.push(State.empty)
             context.state.push(State.propertyName)
             context.state.push(State.empty)
             return table.router(stream, context)
