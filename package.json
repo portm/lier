@@ -1,6 +1,6 @@
 {
   "name": "lier",
-  "version": "2.1.14",
+  "version": "2.1.15",
   "description": "a type validator",
   "main": "index.js",
   "scripts": {
@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "big.js": "^3.2.0",
-    "lodash": "^4.17.4",
+    "lodash": "^4.17.5",
     "randexp": "0.4.6"
   }
 }
