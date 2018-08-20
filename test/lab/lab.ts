@@ -3,6 +3,7 @@ import jsonschema2ast from '../../src/grammar/transform/jsonschema-ast'
 import ast2jsonschema from '../../src/grammar/transform/ast-jsonschema'
 import ast2slim from '../../src/grammar/transform/ast-slim'
 import dtest from '../../src/grammar/transform/json-ast/decorator'
+import * as RandExp from 'randexp'
 
 const base = lier.parse(`
     {
@@ -400,5 +401,15 @@ A`))
 console.log(JSON.stringify(ast2jsonschema(lier.parse(`['a', 1]`)), null, 4))
 
 console.log(lier.stringify(jsonschema2ast(ast2jsonschema(lier.parse(`['a', 1]`)))))
+
+console.log(new RandExp('^[a-z][a-z0-9_-]{5,9}@(126|163|qq|gmail)\\.com$', '').gen())
+
+console.log(JSON.stringify(lier.mockx(`{
+    b: int
+    a: {
+        @range(10, 13)
+        a: str[]
+    }
+}`), null, 4))
 
 console.timeEnd('parse')

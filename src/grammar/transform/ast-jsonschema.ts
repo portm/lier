@@ -66,7 +66,7 @@ const setDecorator = (decorators, target) => {
     }
 }
 
-const typeMapping = {
+const mappings = {
     str: 'string',
     int: 'integer',
     uint: 'integer',
@@ -423,7 +423,7 @@ const visitor: Visitor = {
         if (node.value === 'any') {
             return {}
         }
-        const mapping = typeMapping[node.value]
+        const mapping = mappings[node.value]
         if (mapping) {
             const ret = {
                 type: mapping,
@@ -483,6 +483,10 @@ const visitor: Visitor = {
         }
         return this.router(node.assignment, context)
     }
+}
+
+export {
+    mappings,
 }
 
 export default (ast: Node[]): any => {

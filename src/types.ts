@@ -19,8 +19,10 @@ function int (bits: number) {
     const name = `int` + bits
 
     const fn = function (ctx: Context): any {
-        if (ctx.root.isMock)
-            return _.random(-127, 127)
+        if (ctx.root.isMock) {
+            const data = initRange(ctx, -127, 127)
+            return _.random(data.min, data.max)
+        }
 
         let v = ctx.data
 
@@ -44,8 +46,10 @@ function uint (bits: number) {
     const name = `uint` + bits
 
     const fn = function (ctx: Context): any {
-        if (ctx.root.isMock)
-            return _.random(0, 255)
+        if (ctx.root.isMock) {
+            const data = initRange(ctx, 0, 255)
+            return _.random(data.min, data.max)
+        }
 
         let v = ctx.data
 
@@ -63,8 +67,10 @@ function uint (bits: number) {
 }
 
 function float (ctx: Context): any {
-    if (ctx.root.isMock)
-        return _.random(-1000.1, 1000.1)
+    if (ctx.root.isMock) {
+        const data = initRange(ctx, -1000.1, 1000.1)
+        return _.random(data.min, data.max)
+    }
 
     const v = ctx.data
 
@@ -73,8 +79,10 @@ function float (ctx: Context): any {
 }
 
 function double (ctx: Context): any {
-    if (ctx.root.isMock)
-        return _.random(-1000.1, 1000.1)
+    if (ctx.root.isMock) {
+        const data = initRange(ctx, -1000.1, 1000.1)
+        return _.random(data.min, data.max)
+    }
 
     const v = ctx.data
 
@@ -83,8 +91,15 @@ function double (ctx: Context): any {
 }
 
 function str (ctx: Context): any {
-    if (ctx.root.isMock)
-        return _.randStr()
+    if (ctx.root.isMock) {
+        const data = initRange(ctx, 3, 6)
+        const length = _.random(data.min, data.max)
+        const str = []
+        for (let i = 0; i < length; ++ i) {
+            str[i] = Math.random().toString(36).charAt(8)
+        }
+        return str.join('')
+    }
 
     if (!_.isString(ctx.data))
         return [ctx.data, `is not string`]
@@ -400,6 +415,19 @@ function description (desc: string, type): Type {
     return fn
 }
 
+function initRange (ctx: Context, min: number, max: number) {
+    const data = ctx.root.nodes.get(range)
+    if (data) {
+        min = data.min
+        max = data.max
+        ctx.root.nodes.delete(range)
+    }
+    return {
+        min,
+        max,
+    }
+}
+
 function range (...args): Type {
     const type = args.pop()
     let max = utils.MAX_SAFE_INTEGER
@@ -414,8 +442,30 @@ function range (...args): Type {
         throw TypeError('arguments of range should not be empty')
     }
     const fn: Type = (ctx: Context) => {
-        if (ctx.root.isMock)
-            throw new TypeError('"range" must be used with "mock" type')
+        if (ctx.root.isMock) {
+            const old = ctx.root.nodes.get(range)
+            if (old) {
+                max = Math.min(max, old.max)
+                min = Math.max(min, old.min)
+            }
+            if (type instanceof Array) {
+                if (type.length > 1) throw new TypeError('array type contains multiple types')
+                if (type.length === 1) {
+                    const arr = []
+                    for (let i = 0; i < _.random(min, max); i++) {
+                        arr.push(ctx.mock(type[0], true, ctx.path.concat(i + '')))
+                    }
+                    return arr
+                }
+            } else {
+                ctx.root.nodes.set(range, { max, min })
+                const v = ctx.mock(type)
+                if (!_.isNumber(v) && _.isString(v) && _.isArray(v)) {
+                    throw TypeError(`${type} is not in number, array, string`)
+                }
+                return v
+            }
+        }
 
         const v = ctx.data
         if (_.isNumber(v)) {
