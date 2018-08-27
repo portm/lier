@@ -223,8 +223,25 @@ function mockKey (...args): Type {
 
 function allOf (...types): Type {
     return function (ctx: Context) {
-        if (ctx.root.isMock)
-            throw new TypeError('"allOf" must be used with "mock" type')
+        if (ctx.root.isMock) {
+            const values = []
+            for (let i = 0; i < types.length; i++) {
+                values.push(ctx.mock(types[i]))
+            }
+            if (!values.length) {
+                throw new TypeError('"allOf" must be used with "mock" type')
+            }
+            if (_.isObjectLike(values[0])) {
+                const ret = {}
+                for (let i = 0; i < values.length; i++) {
+                    for (let k in values[i]) {
+                        ret[k] = values[i][k]
+                    }
+                }
+                return ret
+            }
+            return values[0]
+        }
 
         for (let i = 0; i < types.length; i++) {
             ctx.validate(ctx.data, types[i])
