@@ -3,7 +3,7 @@ import { types } from '../'
 import { Node, Type } from './interface'
 import utils from './utils'
 
-class Context {
+export class Context {
     declares: {
         path: string
         value: Node
@@ -13,19 +13,19 @@ class Context {
     } = {}
 }
 
-interface Table {
+export interface Checker {
     start: (any, context: Context) => void
     router: (any, context: Context) => any
     [x: number]: (node: any, context: Context) => any
 }
 
-const table: Table = {
+export const checker: Checker = {
     start: (node, context) => {
         for (const element of node) {
             if (element.type !== Type.element) {
                 continue
             }
-            table.router(element, context)
+            checker.router(element, context)
         }
     },
     router: (node, context) => {
@@ -33,7 +33,7 @@ const table: Table = {
             return node
         }
 
-        const handler = table[node.type]
+        const handler = checker[node.type]
 
         if (handler) {
             return handler(node, context)
@@ -42,7 +42,7 @@ const table: Table = {
         return node
     },
     [Type.unary]: (node, context) => {
-        const argument = table.router(node.argument, context)
+        const argument = checker.router(node.argument, context)
         if (argument instanceof Function) {
             return null
         }
@@ -67,14 +67,14 @@ const table: Table = {
     },
     [Type.member]: (node, context) => {
         const properties = node.properties.map(property => {
-            return table.router(property, context)
+            return checker.router(property, context)
         })
         const object = node.object
         if (object.type === Type.self) {
             return null
         }
         if (object.type !== Type.identifier || types.hasOwnProperty(object.value)) {
-            let ret = table.router(object, context)
+            let ret = checker.router(object, context)
             for (const item of properties) {
                 ret = ret[item]
             }
@@ -86,8 +86,8 @@ const table: Table = {
     },
     [Type.binary]: (node, context) => {
         const operator = node.operator
-        const left = table.router(node.left, context)
-        const right = table.router(node.right, context)
+        const left = checker.router(node.left, context)
+        const right = checker.router(node.right, context)
         
         if (operator === '|') {
             return left | right
@@ -181,8 +181,8 @@ const table: Table = {
             if (property.type !== Type.property) {
                 continue
             }
-            const key = property.key.type === Type.identifier ? property.key.value : table.router(property.key, context)
-            const value = table.router(property.value, context)
+            const key = property.key.type === Type.identifier ? property.key.value : checker.router(property.key, context)
+            const value = checker.router(property.value, context)
             for (const decorate of property.decorators) {
                 if (decorate.type !== Type.decorator) {
                     continue
@@ -192,7 +192,7 @@ const table: Table = {
                     throw new Error('not implemented decorate:' + decorate.name)
                 }
                 for (const arg of decorate.arguments) {
-                    table.router(arg, context)
+                    checker.router(arg, context)
                 }
             }
             ret[key] = value
@@ -203,13 +203,13 @@ const table: Table = {
         return null
     },
     [Type.match]: (node, context) => {
-        table.router(node.test, context)
+        checker.router(node.test, context)
         for (const cs of node.cases) {
             if (cs.type !== Type.case) {
                 continue
             }
-            table.router(cs.test, context)
-            table.router(cs.value, context)
+            checker.router(cs.test, context)
+            checker.router(cs.value, context)
         }
         return null
     },
@@ -219,13 +219,17 @@ const table: Table = {
             && node.callee.value === 'definition'
             && node.arguments.length
         ) {
-            context.using[node.value] = table.router(node.arguments[0], context)
+            const value = checker.router(node.arguments[0], context)
+            if (value) {
+                const path = value.split('.')
+                context.using[path.join('[]')] = path
+            }
             return null
         }
-        const callee = table.router(node.callee, context)
+        const callee = checker.router(node.callee, context)
         if (callee instanceof Function) {
             for (const arg of node.arguments) {
-                table.router(arg, context)
+                checker.router(arg, context)
             }
             return null
         }
@@ -236,7 +240,7 @@ const table: Table = {
             if (item.type === Type.comment) {
                 continue
             }
-            table.router(item, context)
+            checker.router(item, context)
         }
         return null
     },
@@ -250,7 +254,7 @@ const table: Table = {
         if (!node.computed && node.value.type === Type.identifier) {
             return node.value.value
         }
-        return table.router(node.value, context)
+        return checker.router(node.value, context)
     },
     [Type.null]: (node, context) => {
         return null
@@ -269,7 +273,7 @@ const table: Table = {
     },
     [Type.declare]: (node, context) => {
         const path = node.path.map(path => path.value)
-        const value = table.router(node.value, context)
+        const value = checker.router(node.value, context)
         context.declares.push({
             path,
             value,
@@ -279,25 +283,25 @@ const table: Table = {
         return null
     },
     [Type.rest]: (node, context) => {
-        return table.router(node.value, context)
+        return checker.router(node.value, context)
     },
     [Type.optional]: (node, context) => {
-        return table.router(node.value, context)
+        return checker.router(node.value, context)
     },
     [Type.element]: (node, context) => {
         for (const type of node.declarations) {
-            table.router(type, context)
+            checker.router(type, context)
         }
-        table.router(node.assignment, context)
+        checker.router(node.assignment, context)
     },
     [Type.array]: (node, context) => {
-        return [table.router(node.value, context)]
+        return [checker.router(node.value, context)]
     },
 }
 
 export default (ast: Node[], declares = {}): void => {
     const context = new Context()
-    table.start(ast, context)
+    checker.start(ast, context)
     for (const item of context.declares) {
         _.set(declares, item.path, item.value)
     }
