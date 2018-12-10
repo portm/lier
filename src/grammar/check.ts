@@ -173,7 +173,7 @@ export const checker: Checker = {
             return left || right
         }
 
-        throw new Error('not implemented binary operator:' + operator)
+        throw new Error('not implemented binary operator: ' + operator)
     },
     [Type.object]: (node, context) => {
         const ret = {}
@@ -189,11 +189,14 @@ export const checker: Checker = {
                 }
                 const decorateFun = types[decorate.name]
                 if (!decorateFun) {
-                    throw new Error('not implemented decorate:' + decorate.name)
+                    throw new Error('not implemented decorate: ' + decorate.name)
                 }
                 for (const arg of decorate.arguments) {
                     checker.router(arg, context)
                 }
+            }
+            if (ret.hasOwnProperty(key)) {
+                throw new Error('repeated object key: ' + key)
             }
             ret[key] = value
         }
