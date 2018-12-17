@@ -268,7 +268,7 @@ const tokenizer = (style: Style) => {
                 return style.string
             }
 
-            const regex = /^\/(?:[^\/\\]*|\\.)+\/([im]*)/
+            const regex = /^\/(?:[^\/\\]|\\.)+\/([im]*)/
             if (stream.match(regex)) {
                 return style.regex
             }
