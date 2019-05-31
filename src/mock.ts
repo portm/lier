@@ -1,8 +1,10 @@
-import { Path, Root, Type, controlKeys } from './interfaces'
+import { Context, Path, Root, Type, controlKeys, MockNodes } from './interfaces'
 import _ from './utils'
 import validate from './validate'
 
 declare let Map
+
+const MAX_CYCLE_LIMIT = 1e5
 
 function getKey (path: Path) {
     return path.length === 0 ? 'data' : path[path.length - 1]
@@ -49,32 +51,64 @@ function mockObject (type, data, path: Path, root: Root) {
     }
 }
 
-function mock (type, cycled = true, data = this.data, path: Path = this.path, root: Root = this.root): any {
-    return walk(type, data, path, root, cycled)
+function mock (this: Context, type, data = this.data, path: Path = this.path, root: Root = this.root): any {
+    return walk(type, data, path, root)
 }
 
-function walk (type, data, path: Path, root: Root, cycled = true) {
+function select (this: Context, types: any[]): any {
+    if (this.root.cycleDeep === 0) {
+        return types[_.random(0, types.length - 1)]
+    }
+    const counter = this.root.nodes.counter
+    const newTypes = []
+    for (const type of types) {
+        if (!counter.has(type)) {
+            counter.set(type, this.root.cycleDeep - 1)
+        }
+        const quota = counter.get(type)
+        if (quota > 0) {
+            newTypes.push(type)
+            counter.set(type, quota - 1)
+        }
+    }
+    return newTypes[_.random(0, newTypes.length - 1)]
+}
+
+function walk (type, data, path: Path, root: Root) {
     const key = getKey(path)
+
+    const nodes = root.nodes
+
+    root.nodes = {
+        range: nodes.range,
+        marker: new Map(nodes.marker),
+        counter: new Map(nodes.counter),
+    }
 
     if (_.isRegExp(type)) {
         data[key] = _.randExp(type)
     } else if (_.isFunction(type)) {
-        data[key] = type({ data, path, root, mock })
+        data[key] = type({ data, path, root, mock, select })
     } else if (_.isObjectLike(type)) {
         const isArray = type instanceof Array
         const node = isArray ? [] : {}
 
-        const nodes = root.nodes
-
-        root.nodes = new Map(root.nodes)
-
-        if (nodes.has(type)) {
+        if (nodes.marker.has(type)) {
             // when cycle is detected
-            if (cycled) {
-                return data[key] = nodes.get(type)
+            const ref = nodes.marker.get(type)
+            if (root.cycleDeep === 0) {
+                root.nodes = nodes
+                return data[key] = ref.node
+            } else if (ref.num > 0) {
+                ref.num --
+            } else {
+                throw new TypeError('cycle is detected')
             }
         } else {
-            root.nodes.set(type, node)
+            root.nodes.marker.set(type, {
+                node,
+                num: MAX_CYCLE_LIMIT,
+            })
         }
 
         data[key] = node
@@ -86,21 +120,27 @@ function walk (type, data, path: Path, root: Root, cycled = true) {
         else
             data[key] = type
 
-        root.nodes = nodes
     } else {
         data[key] = type
     }
 
+    root.nodes = nodes
+
     return data[key]
 }
 
-export default (type, declares = {}) => {
+export default (type, declares = {}, cycleDeep = 2) => {
     const root = new Root({
         data: {},
         type,
         isMock: true,
-        nodes: new Map,
+        nodes: {
+            range: null,
+            marker: new Map(),
+            counter: new Map(),
+        } as MockNodes,
         declares,
+        cycleDeep,
     })
     const data = walk(type, root, [], root)
     const errs = validate(data, type, declares)

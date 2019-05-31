@@ -32,9 +32,9 @@ function validatex (data, lang, declares?) {
     return validate(data, tree.assignment, defaultDeps(tree.declares, declares))
 }
 
-function mockx (lang, declares?) {
+function mockx (lang, declares?, cycleDeep?) {
     const tree = compile(parse(lang))
-    return mock(tree.assignment, defaultDeps(tree.declares, declares))
+    return mock(tree.assignment, defaultDeps(tree.declares, declares), cycleDeep)
 }
 
 function check (lang, declares?) {

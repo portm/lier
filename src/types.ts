@@ -177,10 +177,10 @@ function Enum (...values): Type {
 }
 
 function optional (type): Type {
-    return function (ctx: Context) {
-        if (ctx.root.isMock)
-            return [ctx.mock(type)][_.random(0, 1)]
-
+    return function optional (ctx: Context) {
+        if (ctx.root.isMock) {
+            return ctx.mock(ctx.select([type]))
+        }
 
         if (!_.isUndefined(ctx.data))
             ctx.validate(ctx.data, type)
@@ -280,7 +280,7 @@ function oneOf (...types): Type {
 function anyOf (...types): Type {
     return function fn (ctx: Context) {
         if (ctx.root.isMock) {
-            return ctx.mock(types[_.random(0, types.length - 1)])
+            return ctx.mock(ctx.select(types))
         }
 
         const errors = ctx.root.errors
@@ -375,18 +375,7 @@ function definition (paths: string[] | string): Type {
         }
         const type = _.get(ctx.root.declares, paths)
         if (ctx.root.isMock) {
-            let cycled = true
-            if (ctx.root.nodes.has(fn)) {
-                const count = ctx.root.nodes.get(fn)
-                if (count > 0) {
-                    cycled = false
-                    ctx.root.nodes.set(fn, count - 1)
-                }
-            } else {
-                ctx.root.nodes.set(fn, 20)
-                cycled = false
-            }
-            return ctx.mock(type, cycled)
+            return ctx.mock(type)
         }
 
         if (!type) {
@@ -433,11 +422,11 @@ function description (desc: string, type): Type {
 }
 
 function initRange (ctx: Context, min: number, max: number) {
-    const data = ctx.root.nodes.get(range)
+    const data = ctx.root.nodes.range
     if (data) {
         min = data.min
         max = data.max
-        ctx.root.nodes.delete(range)
+        ctx.root.nodes.range = null
     }
     return {
         min,
@@ -460,7 +449,7 @@ function range (...args): Type {
     }
     const fn: Type = (ctx: Context) => {
         if (ctx.root.isMock) {
-            const old = ctx.root.nodes.get(range)
+            const old = ctx.root.nodes.range
             if (old) {
                 max = Math.min(max, old.max)
                 min = Math.max(min, old.min)
@@ -470,12 +459,12 @@ function range (...args): Type {
                 if (type.length === 1) {
                     const arr = []
                     for (let i = 0; i < _.random(min, max); i++) {
-                        arr.push(ctx.mock(type[0], true, ctx.path.concat(i + '')))
+                        arr.push(ctx.mock(type[0], ctx.path.concat(i + '')))
                     }
                     return arr
                 }
             } else {
-                ctx.root.nodes.set(range, { max, min })
+                ctx.root.nodes.range = { max, min }
                 const v = ctx.mock(type)
                 if (!_.isNumber(v) && _.isString(v) && _.isArray(v)) {
                     throw TypeError(`${type} is not in number, array, string`)
