@@ -10,7 +10,7 @@ export = (it) => {
     function test (description: string, type, expect?) {
         it('mock: ' + description, () => {
             return it.eq(
-                lier.validate(lier.mock(type), type),
+                lier.validate(lier.mock(type, {}, 0), type),
                 expect,
             )
         })
@@ -73,16 +73,6 @@ export = (it) => {
             lier.mock(mock(1, allOf({ b: str }, { c: int })))
         } catch (err) {
             return it.eq(err instanceof TypeError, true)
-        }
-
-        throw new Error()
-    })
-
-    it('allOf mock err', () => {
-        try {
-            lier.mock(allOf({ b: str }, { c: int }))
-        } catch (err) {
-            return it.eq(err.message.indexOf('"allOf" must be used with "mock" type') === 0, true)
         }
 
         throw new Error()
