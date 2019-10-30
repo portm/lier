@@ -89,7 +89,7 @@ const self = {
     },
 
     random (min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min
+        return _.random(min, max)
     },
 
     merge (target, source) {

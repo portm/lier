@@ -520,7 +520,7 @@ const tokenizer = (style: Style) => {
         },
 
         [State.number]: (stream, context) => {
-            const regex = /^(?:0[xX][\da-fA-F]+|\d+\.?|\d*\.\d+(?:[eE]\d+)?)/
+            const regex = /^(?:0[xX][\da-fA-F]+|\d*\.\d+(?:[eE]\d+)?|\d+\.?)/
             if (stream.match(regex)) {
                 context.state.pop()
                 return context.style
