@@ -400,7 +400,10 @@ const pushRange = (decorators, value) => {
                 type: Type.number,
                 value: value.minItems,
             } as lier.NumberNode,
-            utils.makeType('Infinity')
+            {
+                type: Type.number,
+                value: (+value.minItems || 0) + 100,
+            } as lier.NumberNode,
         ]
     } else if (value.hasOwnProperty('maxItems')) {
         items = [
@@ -426,7 +429,10 @@ const pushRange = (decorators, value) => {
                 type: Type.number,
                 value: value.minimum,
             } as lier.NumberNode,
-            utils.makeType('Infinity')
+            {
+                type: Type.number,
+                value: (+value.minimum || 0) + 100,
+            } as lier.NumberNode,
         ]
     } else if (value.hasOwnProperty('maximum')) {
         items = [
